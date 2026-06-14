@@ -1,26 +1,176 @@
 @import "tailwindcss";
+@plugin "tailwindcss-animate";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius: 0.5rem;
+  
+  /* Modern premium typography mapping */
+  --font-sans: var(--font-geist-sans), Inter, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), JetBrains Mono, SFMono-Regular, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  /* Soft warm background for light mode */
+  --background: hsl(15 40% 98%);
+  --foreground: hsl(222 47% 11%);
+
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(222 47% 11%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(222 47% 11%);
+
+  /* 🟠 Primary: #FF5722 */
+  --primary: hsl(15 100% 57%);
+  --primary-foreground: hsl(0 0% 100%);
+
+  /* 🟢 Secondary: #4CAF50 */
+  --secondary: hsl(122 39% 50%);
+  --secondary-foreground: hsl(0 0% 100%);
+
+  /* 🔘 Neutral: #89726C */
+  --muted: hsl(210 20% 96%);
+  --muted-foreground: hsl(13 12% 48%);
+
+  /* 🌲 Tertiary: #164334 */
+  --accent: hsl(160 51% 17%);
+  --accent-foreground: hsl(0 0% 100%);
+
+  --destructive: hsl(0 84% 60%);
+  --destructive-foreground: hsl(0 0% 100%);
+
+  --border: hsl(214 32% 91%);
+  --input: hsl(214 32% 91%);
+  --ring: hsl(15 100% 57%);
+
+  --dot-color: hsl(214 32% 91%);
+
+  /* Sidebar Specific Colors (Light Mode) */
+  --sidebar-bg: hsl(160 51% 17%);
+  --sidebar-foreground: hsl(0 0% 100%);
+  --sidebar-primary: hsl(15 100% 57%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(160 51% 25%);
+  --sidebar-accent-foreground: hsl(0 0% 100%);
+  --sidebar-border: hsl(160 51% 17%);
+}
+
+.dark {
+  /* Deep Navy background for Dark Mode */
+  --background: hsl(222 47% 11%);
+  --foreground: hsl(210 40% 98%);
+
+  --card: hsl(222 47% 14%);
+  --card-foreground: hsl(210 40% 98%);
+
+  --popover: hsl(222 47% 14%);
+  --popover-foreground: hsl(210 40% 98%);
+
+  /* 🟠 Primary: #FF5722 */
+  --primary: hsl(15 100% 57%);
+  --primary-foreground: hsl(0 0% 100%);
+
+  /* 🟢 Secondary: #4CAF50 */
+  --secondary: hsl(122 39% 50%);
+  --secondary-foreground: hsl(0 0% 100%);
+
+  /* 🔘 Neutral: #89726C */
+  --muted: hsl(222 47% 18%);
+  --muted-foreground: hsl(215 20% 65%);
+
+  /* 🌲 Tertiary: #164334 */
+  --accent: hsl(222 47% 18%);
+  --accent-foreground: hsl(210 40% 98%);
+
+  --destructive: hsl(0 84% 65%);
+  --destructive-foreground: hsl(210 40% 98%);
+
+  --border: hsl(222 47% 18%);
+  --input: hsl(222 47% 18%);
+  --ring: hsl(15 100% 57%);
+
+  --dot-color: hsl(222 47% 14%);
+
+  /* Sidebar Specific Colors (Dark Mode) */
+  --sidebar-bg: hsl(222 47% 7%);
+  --sidebar-foreground: hsl(210 40% 88%);
+  --sidebar-primary: hsl(15 100% 57%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(222 47% 12%);
+  --sidebar-accent-foreground: hsl(210 40% 98%);
+  --sidebar-border: hsl(222 47% 9%);
+}
+
+@theme inline {
+  --color-sidebar: var(--sidebar-bg);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+}
+
+@layer base {
+  * {
+    @apply border-border/60 outline-ring/40;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply text-foreground bg-background font-sans;
+  }
+  
+  input, select, textarea {
+    @apply font-sans;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Custom premium thin scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+@utility bg-dot-pattern {
+  background-image: radial-gradient(circle, var(--dot-color) 1.5px, transparent 1.5px);
+  background-size: 20px 20px;
+}
+
+/* Glassmorphism utility */
+@utility bg-glass {
+  background-color: rgba(var(--card), 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
