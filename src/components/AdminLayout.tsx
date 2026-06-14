@@ -8,6 +8,8 @@ import { Loader2, LogOut, ShieldAlert, User as UserIcon, Menu } from "lucide-rea
 import { Toaster } from "sonner";
 import Link from "next/link";
 
+import { ModeToggle } from "./theme/ModeToggle";
+
 export function AdminLayout({ children }: { children: React.ReactNode }) {
     const { loading, isAuthenticated, user, logout } = useAdminAuth();
     const pathname = usePathname();
@@ -71,6 +73,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                     </div>
 
                     <div className="flex items-center gap-4 shrink-0">
+                        <ModeToggle />
                         {user && (
                             <div className="flex items-center gap-3">
                                 <span className="text-xs font-semibold text-muted-foreground">
