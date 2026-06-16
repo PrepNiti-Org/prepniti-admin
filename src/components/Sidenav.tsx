@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { UploadCloud, Sliders, Settings, Menu, BarChart3, History } from "lucide-react";
+import { UploadCloud, Sliders, Settings, Menu, BarChart3, History, Send } from "lucide-react";
 
 export const navLinks = [
     { name: "Ingest PDF", href: "/upload", icon: UploadCloud },
     { name: "Assemble Paper", href: "/assemble", icon: Sliders },
     { name: "Manage Mocks", href: "/manage", icon: Settings },
     { name: "Attempts Analytics", href: "/analytics", icon: BarChart3 },
+    { name: "Broadcast Center", href: "/broadcast", icon: Send },
     { name: "System Audit Logs", href: "/audit-logs", icon: History },
 ];
 
