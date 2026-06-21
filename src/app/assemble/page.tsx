@@ -41,7 +41,7 @@ function AssemblePageContent() {
     const [paperTitle, setPaperTitle] = useState("");
     const [examType, setExamType] = useState<string>("practice");
     const [duration, setDuration] = useState<number>(120);
-    const [targetExam, setTargetExam] = useState<string>("UPSC");
+    const [targetExam, setTargetExam] = useState<string>("");
 
     const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
@@ -113,7 +113,7 @@ function AssemblePageContent() {
                     setPaperTitle(res.data.exam_name || res.data.filename || "");
                     setExamType(res.data.exam_type || "practice");
                     setDuration(res.data.duration || 120);
-                    setTargetExam(res.data.target_exam || "UPSC");
+                    setTargetExam(res.data.target_exam);
                     if (res.data.questions) {
                         setSelectedIds(res.data.questions.map((q: any) => q.id));
                     }
@@ -305,7 +305,7 @@ function AssemblePageContent() {
                 setSelectedIds([]);
                 setExamType("practice");
                 setDuration(120);
-                setTargetExam("UPSC");
+                setTargetExam("Unspecified");
             }
         } catch (err: any) {
             toast.error(err.response?.data?.error || "Saving changes failed.");

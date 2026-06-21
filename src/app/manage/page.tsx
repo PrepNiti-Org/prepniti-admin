@@ -11,10 +11,12 @@ import { DeleteModal } from "./_components/DeleteModal";
 interface Paper {
     id: string;
     filename: string;
+    exam_name?: string;
     uploaded_at: string;
     q_count: number;
     exam_type: string;
     duration: number;
+    target_exam?: string;
 }
 
 export default function ManageMocksPage() {
@@ -23,6 +25,9 @@ export default function ManageMocksPage() {
 
     const [renamingPaperId, setRenamingPaperId] = useState<string | null>(null);
     const [renameTitle, setRenameTitle] = useState("");
+    const [examType, setExamType] = useState("practice");
+    const [duration, setDuration] = useState(120);
+    const [targetExam, setTargetExam] = useState("");
     const [savingRename, setSavingRename] = useState(false);
 
     const [deletingPaperId, setDeletingPaperId] = useState<string | null>(null);
@@ -49,7 +54,10 @@ export default function ManageMocksPage() {
 
     const handleOpenRename = (p: Paper) => {
         setRenamingPaperId(p.id);
-        setRenameTitle(p.filename);
+        setRenameTitle(p.exam_name || p.filename);
+        setExamType(p.exam_type);
+        setDuration(p.duration);
+        setTargetExam(p.target_exam || "Unspecified");
     };
 
     const handleSaveRename = async () => {
@@ -57,12 +65,18 @@ export default function ManageMocksPage() {
 
         setSavingRename(true);
         try {
-            await api.put(`/admin/papers/${renamingPaperId}`, { filename: renameTitle.trim() });
-            toast.success("Paper renamed successfully.");
+            await api.put(`/admin/papers/${renamingPaperId}`, {
+                filename: renameTitle.trim(),
+                exam_name: renameTitle.trim(),
+                exam_type: examType,
+                duration: Number(duration),
+                target_exam: targetExam
+            });
+            toast.success("Paper details updated successfully.");
             setRenamingPaperId(null);
             loadPapers();
         } catch {
-            toast.error("Failed to rename paper.");
+            toast.error("Failed to update paper details.");
         } finally {
             setSavingRename(false);
         }
@@ -118,11 +132,17 @@ export default function ManageMocksPage() {
 
             <RenameModal
                 isOpen={!!renamingPaperId}
-                renameTitle={renameTitle}
-                setRenameTitle={setRenameTitle}
+                paperTitle={renameTitle}
+                setPaperTitle={setRenameTitle}
+                examType={examType}
+                setExamType={setExamType}
+                duration={duration}
+                setDuration={setDuration}
+                targetExam={targetExam}
+                setTargetExam={setTargetExam}
                 onClose={() => setRenamingPaperId(null)}
                 onSave={handleSaveRename}
-                savingRename={savingRename}
+                saving={savingRename}
             />
 
             <DeleteModal
