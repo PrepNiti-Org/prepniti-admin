@@ -12,6 +12,8 @@ interface CompilePanelProps {
     setExamType: (type: string) => void;
     duration: number;
     setDuration: (duration: number) => void;
+    targetExam: string;
+    setTargetExam: (targetExam: string) => void;
     selectedQuestions: Question[];
     onRemoveSelected: (id: string) => void;
     onCompile: () => void;
@@ -26,6 +28,8 @@ export function CompilePanel({
     setExamType,
     duration,
     setDuration,
+    targetExam,
+    setTargetExam,
     selectedQuestions,
     onRemoveSelected,
     onCompile,
@@ -82,6 +86,32 @@ export function CompilePanel({
                         />
                     </div>
                 </div>
+
+                <div className="space-y-2">
+                    <label className="text-xs font-semibold text-muted-foreground block">
+                        Target Exam Category:
+                    </label>
+                    <select
+                        value={targetExam}
+                        onChange={(e) => setTargetExam(e.target.value)}
+                        className="w-full bg-primary/10 text-foreground border border-primary/50 focus-visible:bg-background focus-visible:ring-1 focus-visible:border-primary transition-all h-10 px-3 rounded-xl text-xs font-semibold focus:outline-none cursor-pointer"
+                    >
+                        <option value="UPSC" className="bg-background">UPSC</option>
+                        <option value="JEE" className="bg-background">JEE</option>
+                        <option value="NEET" className="bg-background">NEET</option>
+                        <option value="GATE" className="bg-background">GATE</option>
+                        <option value="CAT" className="bg-background">CAT</option>
+                        <option value="SSC" className="bg-background">SSC CGL</option>
+                        <option value="Bank" className="bg-background">Bank</option>
+                        <option value="Teaching" className="bg-background">Teaching</option>
+                        <option value="State PCS" className="bg-background">State PCS</option>
+                        <option value="Defence" className="bg-background">Defence</option>
+                        <option value="Law" className="bg-background">Law</option>
+                        <option value="Nursing" className="bg-background">Nursing</option>
+                        <option value="Other" className="bg-background">Other</option>
+                    </select>
+                </div>
+
 
                 <div className="flex justify-between items-center bg-primary/5 border border-primary/20 rounded-xl p-4">
                     <div>

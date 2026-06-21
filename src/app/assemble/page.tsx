@@ -41,6 +41,7 @@ function AssemblePageContent() {
     const [paperTitle, setPaperTitle] = useState("");
     const [examType, setExamType] = useState<string>("practice");
     const [duration, setDuration] = useState<number>(120);
+    const [targetExam, setTargetExam] = useState<string>("UPSC");
 
     const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
@@ -109,9 +110,10 @@ function AssemblePageContent() {
             setEditingPaperId(paperId);
             api.get(`/admin/papers/${paperId}`)
                 .then(res => {
-                    setPaperTitle(res.data.filename);
+                    setPaperTitle(res.data.exam_name || res.data.filename || "");
                     setExamType(res.data.exam_type || "practice");
                     setDuration(res.data.duration || 120);
+                    setTargetExam(res.data.target_exam || "UPSC");
                     if (res.data.questions) {
                         setSelectedIds(res.data.questions.map((q: any) => q.id));
                     }
@@ -281,24 +283,29 @@ function AssemblePageContent() {
             if (editingPaperId) {
                 await api.put(`/admin/papers/${editingPaperId}`, {
                     filename: paperTitle.trim(),
+                    exam_name: paperTitle.trim(),
                     question_ids: selectedIds,
                     exam_type: examType,
-                    duration: Number(duration)
+                    duration: Number(duration),
+                    target_exam: targetExam
                 });
                 toast.success("Successfully updated exam paper!");
                 router.push("/manage");
             } else {
                 await api.post("/admin/papers", {
                     filename: paperTitle.trim(),
+                    exam_name: paperTitle.trim(),
                     question_ids: selectedIds,
                     exam_type: examType,
-                    duration: Number(duration)
+                    duration: Number(duration),
+                    target_exam: targetExam
                 });
                 toast.success("Successfully published paper to PrepNiti!");
                 setPaperTitle("");
                 setSelectedIds([]);
                 setExamType("practice");
                 setDuration(120);
+                setTargetExam("UPSC");
             }
         } catch (err: any) {
             toast.error(err.response?.data?.error || "Saving changes failed.");
@@ -396,6 +403,8 @@ function AssemblePageContent() {
                         setExamType={setExamType}
                         duration={duration}
                         setDuration={setDuration}
+                        targetExam={targetExam}
+                        setTargetExam={setTargetExam}
                         selectedQuestions={selectedQuestionsList}
                         onRemoveSelected={handleRemoveSelected}
                         onCompile={handleCompilePaper}
