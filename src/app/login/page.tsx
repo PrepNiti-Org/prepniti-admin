@@ -69,7 +69,7 @@ export default function AdminLoginPage() {
             <div className="hidden bg-sidebar lg:flex flex-col justify-between p-10 text-sidebar-foreground border-r border-sidebar-border relative z-10">
                 <div className="flex items-center text-lg font-bold tracking-tight gap-2">
                     <ShieldAlert className="h-5 w-5 text-sidebar-primary" />
-                    <span>PrepNiti Admin Portal 🇮🇳</span>
+                    <span>PrepNiti Admin Portal</span>
                 </div>
                 <div className="space-y-4">
                     <blockquote className="space-y-2 max-w-md">

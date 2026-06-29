@@ -42,6 +42,11 @@ function AssemblePageContent() {
     const [examType, setExamType] = useState<string>("practice");
     const [duration, setDuration] = useState<number>(120);
     const [targetExam, setTargetExam] = useState<string>("");
+    const [visibleCount, setVisibleCount] = useState(15);
+
+    useEffect(() => {
+        setVisibleCount(15);
+    }, [searchQuery, filterType, filterDiff]);
 
     const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
@@ -138,6 +143,52 @@ function AssemblePageContent() {
 
     const handleRemoveSelected = (id: string) => {
         setSelectedIds(prev => prev.filter(x => x !== id));
+    };
+
+    const handleSelectAllFiltered = () => {
+        const filteredIds = filteredQuestions.map(q => q.id);
+        setSelectedIds(prev => Array.from(new Set([...prev, ...filteredIds])));
+        toast.success(`Selected all ${filteredIds.length} filtered questions.`);
+    };
+
+    const handleClearSelection = () => {
+        setSelectedIds([]);
+        toast.success("Cleared all selections.");
+    };
+
+    const handleSelectRandom = (count: number) => {
+        if (filteredQuestions.length === 0) {
+            toast.error("No filtered questions to select from.");
+            return;
+        }
+        const shuffle = [...filteredQuestions].sort(() => 0.5 - Math.random());
+        const selected = shuffle.slice(0, Math.min(count, shuffle.length)).map(q => q.id);
+        setSelectedIds(prev => Array.from(new Set([...prev, ...selected])));
+        toast.success(`Selected ${selected.length} random questions.`);
+    };
+
+    const handleSelectQuestionClick = (id: string) => {
+        const idx = filteredQuestions.findIndex(q => q.id === id);
+        if (idx === -1) return;
+
+        if (idx >= visibleCount) {
+            setVisibleCount(idx + 15);
+        }
+
+        if (!expandedIds.includes(id)) {
+            setExpandedIds(prev => [...prev, id]);
+        }
+
+        setTimeout(() => {
+            const el = document.getElementById(`question-card-${id}`);
+            if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+                el.classList.add("ring-4", "ring-primary/60", "scale-[1.01]");
+                setTimeout(() => {
+                    el.classList.remove("ring-4", "ring-primary/60", "scale-[1.01]");
+                }, 1500);
+            }
+        }, 100);
     };
 
     const filteredQuestions = questions.filter(q => {
@@ -319,23 +370,23 @@ function AssemblePageContent() {
         .filter((q): q is Question => !!q);
 
     return (
-        <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-300">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border">
-                <div className="space-y-1">
-                    <h1 className="text-2xl font-extrabold tracking-tight">Assemble Mock Exam</h1>
-                    <p className="text-muted-foreground text-sm">
+        <div className="max-w-7xl mx-auto h-[calc(100vh-115px)] flex flex-col space-y-4 animate-in fade-in duration-300 overflow-hidden">
+            <div className="flex-none flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border">
+                <div className="space-y-0.5">
+                    <h1 className="text-xl font-extrabold tracking-tight">Assemble Mock Exam</h1>
+                    <p className="text-muted-foreground text-xs">
                         Select questions from the bank and compile them into standardized mock papers.
                     </p>
                 </div>
                 <button
                     onClick={handleOpenCreateModal}
-                    className="bg-primary hover:bg-primary/95 text-primary-foreground font-semibold py-2.5 px-4 rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer text-xs"
+                    className="bg-primary hover:bg-primary/95 text-primary-foreground font-semibold py-2 px-3.5 rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer text-xs"
                 >
                     <Plus className="h-4 w-4" /> Create New Question
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-card border border-border p-4 rounded-2xl shadow-sm">
+            <div className="flex-none grid grid-cols-1 sm:grid-cols-3 gap-3 bg-card border border-border p-3 rounded-2xl shadow-sm">
                 <div className="relative flex items-center">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/50" />
                     <input
@@ -368,9 +419,44 @@ function AssemblePageContent() {
                 </select>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            <div className="flex-none flex flex-wrap items-center gap-2 text-xs bg-muted/40 p-3 border border-border rounded-xl">
+                <span className="font-semibold text-muted-foreground mr-2">Bulk Actions:</span>
+                <button
+                    onClick={handleSelectAllFiltered}
+                    className="px-2.5 py-1.5 bg-primary/10 border border-primary/20 text-primary font-bold rounded-lg hover:bg-primary hover:text-primary-foreground transition-all cursor-pointer"
+                >
+                    Select All Filtered ({filteredQuestions.length})
+                </button>
+                <button
+                    onClick={() => handleSelectRandom(5)}
+                    className="px-2.5 py-1.5 border border-border text-foreground font-semibold rounded-lg hover:border-primary/40 transition-all cursor-pointer bg-background"
+                >
+                    Select Random 5
+                </button>
+                <button
+                    onClick={() => handleSelectRandom(10)}
+                    className="px-2.5 py-1.5 border border-border text-foreground font-semibold rounded-lg hover:border-primary/40 transition-all cursor-pointer bg-background"
+                >
+                    Select Random 10
+                </button>
+                <button
+                    onClick={() => handleSelectRandom(25)}
+                    className="px-2.5 py-1.5 border border-border text-foreground font-semibold rounded-lg hover:border-primary/40 transition-all cursor-pointer bg-background"
+                >
+                    Select Random 25
+                </button>
+                {selectedIds.length > 0 && (
+                    <button
+                        onClick={handleClearSelection}
+                        className="px-2.5 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold rounded-lg hover:bg-rose-500 hover:text-white transition-all cursor-pointer ml-auto"
+                    >
+                        Clear Selection ({selectedIds.length})
+                    </button>
+                )}
+            </div>
 
-                <div className="lg:col-span-2 space-y-4">
+            <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
+                <div className="lg:col-span-2 h-full overflow-y-auto pr-1 pb-6 space-y-4">
                     {loadingQuestions ? (
                         <div className="py-24 text-center text-muted-foreground flex flex-col items-center justify-center gap-2">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -381,21 +467,33 @@ function AssemblePageContent() {
                             No questions found matching active filters.
                         </div>
                     ) : (
-                        filteredQuestions.map((q) => (
-                            <QuestionCard
-                                key={q.id}
-                                question={q}
-                                isChecked={selectedIds.includes(q.id)}
-                                onToggleSelect={handleToggleSelect}
-                                isExpanded={expandedIds.includes(q.id)}
-                                onToggleExpand={toggleExpand}
-                                onEdit={handleOpenEditModal}
-                            />
-                        ))
+                        <>
+                            <div className="space-y-4">
+                                {filteredQuestions.slice(0, visibleCount).map((q) => (
+                                    <QuestionCard
+                                        key={q.id}
+                                        question={q}
+                                        isChecked={selectedIds.includes(q.id)}
+                                        onToggleSelect={handleToggleSelect}
+                                        isExpanded={expandedIds.includes(q.id)}
+                                        onToggleExpand={toggleExpand}
+                                        onEdit={handleOpenEditModal}
+                                    />
+                                ))}
+                            </div>
+                            {filteredQuestions.length > visibleCount && (
+                                <button
+                                    onClick={() => setVisibleCount(prev => prev + 15)}
+                                    className="w-full py-2.5 border border-dashed border-border rounded-2xl hover:border-primary/50 text-muted-foreground hover:text-primary transition-all font-semibold text-xs text-center cursor-pointer bg-card/40"
+                                >
+                                    Load More Questions (+15)
+                                </button>
+                            )}
+                        </>
                     )}
                 </div>
 
-                <div className="lg:col-span-1 lg:sticky lg:top-20 space-y-6">
+                <div className="lg:col-span-1 h-full overflow-y-auto pr-1 pb-6">
                     <CompilePanel
                         paperTitle={paperTitle}
                         setPaperTitle={setPaperTitle}
@@ -407,6 +505,8 @@ function AssemblePageContent() {
                         setTargetExam={setTargetExam}
                         selectedQuestions={selectedQuestionsList}
                         onRemoveSelected={handleRemoveSelected}
+                        onReorder={setSelectedIds}
+                        onClickQuestion={handleSelectQuestionClick}
                         onCompile={handleCompilePaper}
                         publishing={publishing}
                         isEditing={!!editingPaperId}

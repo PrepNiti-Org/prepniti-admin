@@ -40,7 +40,8 @@ export function QuestionCard({
 
     return (
         <Card
-            className={`transition-all duration-200 ${isChecked
+            id={`question-card-${question.id}`}
+            className={`transition-all duration-300 ${isChecked
                     ? "border-primary/50 bg-primary/5"
                     : "border-border hover:border-primary/30"
                 }`}

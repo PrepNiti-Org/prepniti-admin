@@ -3,7 +3,24 @@
 import React from "react";
 import { Question } from "./types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../components/ui/card";
-import { FileText, Sparkles, Loader2, X } from "lucide-react";
+import { FileText, Sparkles, Loader2, X, GripVertical, CheckCircle2 } from "lucide-react";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface CompilePanelProps {
     paperTitle: string;
@@ -16,9 +33,69 @@ interface CompilePanelProps {
     setTargetExam: (targetExam: string) => void;
     selectedQuestions: Question[];
     onRemoveSelected: (id: string) => void;
+    onReorder: (ids: string[]) => void;
+    onClickQuestion?: (id: string) => void;
     onCompile: () => void;
     publishing: boolean;
     isEditing?: boolean;
+}
+
+interface SortableItemProps {
+    id: string;
+    q: Question;
+    idx: number;
+    onRemove: (id: string) => void;
+    onClick?: () => void;
+}
+
+function SortableItem({ id, q, idx, onRemove, onClick }: SortableItemProps) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+        zIndex: isDragging ? 50 : "auto",
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="flex flex-col border-b border-border/40 last:border-b-0 bg-card select-none"
+        >
+            <div className="p-3 text-[11px] flex items-center justify-between gap-3 hover:bg-muted/30">
+                <div
+                    className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
+                    onClick={onClick}
+                >
+                    <div
+                        {...attributes}
+                        {...listeners}
+                        className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground/80 p-0.5 rounded transition-colors shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <GripVertical className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="truncate pr-2 font-medium">
+                        <span className="text-primary font-bold mr-1">Q{idx + 1}.</span>
+                        {q.question_text}
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onRemove(q.id);
+                    }}
+                    className="text-muted-foreground hover:text-destructive shrink-0 cursor-pointer p-0.5 rounded"
+                    title="Remove"
+                >
+                    <X className="h-3.5 w-3.5" />
+                </button>
+            </div>
+        </div>
+    );
 }
 
 export function CompilePanel({
@@ -32,12 +109,37 @@ export function CompilePanel({
     setTargetExam,
     selectedQuestions,
     onRemoveSelected,
+    onReorder,
+    onClickQuestion,
     onCompile,
     publishing,
     isEditing = false
 }: CompilePanelProps) {
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 4,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            const oldIndex = selectedQuestions.findIndex((q) => q.id === active.id);
+            const newIndex = selectedQuestions.findIndex((q) => q.id === over.id);
+            if (oldIndex !== -1 && newIndex !== -1) {
+                const reordered = arrayMove(selectedQuestions, oldIndex, newIndex);
+                onReorder(reordered.map((q) => q.id));
+            }
+        }
+    };
+
     return (
-        <Card className="lg:sticky lg:top-20">
+        <Card className="border border-border bg-card">
             <CardHeader>
                 <CardTitle className="text-base">{isEditing ? "Edit Mock Paper" : "Mock Paper Details"}</CardTitle>
                 <CardDescription>
@@ -112,7 +214,6 @@ export function CompilePanel({
                     </select>
                 </div>
 
-
                 <div className="flex justify-between items-center bg-primary/5 border border-primary/20 rounded-xl p-4">
                     <div>
                         <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Questions Selected</span>
@@ -125,21 +226,20 @@ export function CompilePanel({
                     <div className="space-y-2">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">Selected Questions Preview:</span>
                         <div className="max-h-[160px] overflow-y-auto border border-border rounded-xl divide-y divide-border/40 bg-background/50">
-                            {selectedQuestions.map((q, idx) => (
-                                <div key={q.id} className="p-3 text-[11px] flex items-start justify-between gap-3 hover:bg-muted/30">
-                                    <div className="truncate pr-2 font-medium">
-                                        <span className="text-primary font-bold mr-1">Q{idx + 1}.</span>
-                                        {q.question_text}
-                                    </div>
-                                    <button
-                                        onClick={() => onRemoveSelected(q.id)}
-                                        className="text-muted-foreground hover:text-destructive shrink-0 cursor-pointer"
-                                        title="Remove"
-                                    >
-                                        <X className="h-3.5 w-3.5" />
-                                    </button>
-                                </div>
-                            ))}
+                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                <SortableContext items={selectedQuestions.map(q => q.id)} strategy={verticalListSortingStrategy}>
+                                    {selectedQuestions.map((q, idx) => (
+                                        <SortableItem
+                                            key={q.id}
+                                            id={q.id}
+                                            q={q}
+                                            idx={idx}
+                                            onRemove={onRemoveSelected}
+                                            onClick={() => onClickQuestion && onClickQuestion(q.id)}
+                                        />
+                                    ))}
+                                </SortableContext>
+                            </DndContext>
                         </div>
                     </div>
                 )}

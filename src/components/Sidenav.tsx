@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { UploadCloud, Sliders, Settings, Menu, BarChart3, History } from "lucide-react";
+import { UploadCloud, Sliders, Settings, Menu, BarChart3, History, MessageSquare, LayoutDashboard, Users } from "lucide-react";
 
 export const navLinks = [
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "User Dashboards", href: "/users", icon: Users },
     { name: "Ingest PDF", href: "/upload", icon: UploadCloud },
     { name: "Assemble Paper", href: "/assemble", icon: Sliders },
     { name: "Manage Mocks", href: "/manage", icon: Settings },
     { name: "Attempts Analytics", href: "/analytics", icon: BarChart3 },
     { name: "System Audit Logs", href: "/audit-logs", icon: History },
+    { name: "User Feedback", href: "/feedback", icon: MessageSquare },
 ];
 
 interface SidenavProps {
