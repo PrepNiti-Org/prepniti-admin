@@ -26,7 +26,7 @@ ENV NEXT_PUBLIC_EXTRACTION_API_URL=${NEXT_PUBLIC_EXTRACTION_API_URL:-http://loca
 RUN npm run build
 
 # ==============================================================================
-# Stage 2: Minimal Secure Runtime
+# Stage 2: Minimal Secure Runtime (Standalone Output)
 # ==============================================================================
 FROM node:20-alpine AS runner
 
@@ -34,10 +34,11 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Copy necessary runtime assets from the builder stage
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
+# Copy standalone server (includes only necessary node_modules)
+COPY --from=builder /app/.next/standalone ./
+
+# Copy static assets (not included in standalone output)
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
 # Ensure the runner directory is owned by the node user
@@ -49,5 +50,7 @@ USER node
 # Document container port
 EXPOSE 3001
 
-# Start Next.js
-CMD ["npm", "run", "start"]
+# Start Next.js standalone server
+# PORT env must match the exposed port
+ENV PORT=3001
+CMD ["node", "server.js"]
