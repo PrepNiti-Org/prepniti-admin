@@ -136,7 +136,7 @@ function FeedbackDrawer({
                             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">From</p>
                             <p className="text-xs font-medium flex items-center gap-1">
                                 <Mail className="h-3 w-3 text-muted-foreground" />
-                                {feedback.email || feedback.user?.email || "—"}
+                                {feedback.email || feedback.user?.email || "-"}
                             </p>
                             {feedback.user?.username && (
                                 <p className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -315,7 +315,7 @@ export default function FeedbackPage() {
             accessorFn: (row) => row.email || row.user?.email || "",
             header: "From",
             cell: ({ row }) => {
-                const email = row.original.email || row.original.user?.email || "—";
+                const email = row.original.email || row.original.user?.email || "-";
                 const username = row.original.user?.username;
                 return (
                     <div className="flex flex-col">

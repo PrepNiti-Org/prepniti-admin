@@ -76,7 +76,7 @@ export default function AdminLoginPage() {
                         <p className="text-lg font-medium leading-relaxed italic text-white/90">
                             &ldquo;The best way to find yourself is to lose yourself in the service of others.&rdquo;
                         </p>
-                        <footer className="text-sm opacity-80 font-semibold">— Mahatma Gandhi</footer>
+                        <footer className="text-sm opacity-80 font-semibold">- Mahatma Gandhi</footer>
                     </blockquote>
                 </div>
                 <div className="text-xs opacity-50 font-mono">
