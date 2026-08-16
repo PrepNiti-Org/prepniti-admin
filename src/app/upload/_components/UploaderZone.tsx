@@ -3,6 +3,8 @@
 import React from "react";
 import { UploadCloud, FileText, Loader2, Sparkles } from "lucide-react";
 
+import { ExtractionProgress, LiveQuestionPreview } from "./ExtractionProgress";
+
 interface UploaderZoneProps {
     file: File | null;
     isDragActive: boolean;
@@ -11,6 +13,15 @@ interface UploaderZoneProps {
     handleDrop: (e: React.DragEvent) => void;
     handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     handleProcess: () => void;
+    progressPercent?: number;
+    stageMessage?: string;
+    completedChunks?: number;
+    totalChunks?: number;
+    totalPages?: number;
+    strategy?: "visual" | "text";
+    liveQuestions?: LiveQuestionPreview[];
+    totalQuestionsFound?: number;
+    onAbort?: () => void;
 }
 
 export function UploaderZone({
@@ -20,8 +31,36 @@ export function UploaderZone({
     handleDrag,
     handleDrop,
     handleFileChange,
-    handleProcess
+    handleProcess,
+    progressPercent = 0,
+    stageMessage = "",
+    completedChunks = 0,
+    totalChunks = 0,
+    totalPages,
+    strategy = "text",
+    liveQuestions = [],
+    totalQuestionsFound = 0,
+    onAbort
 }: UploaderZoneProps) {
+    if (extracting) {
+        return (
+            <div className="space-y-6">
+                <ExtractionProgress
+                    progressPercent={progressPercent}
+                    stageMessage={stageMessage}
+                    completedChunks={completedChunks}
+                    totalChunks={totalChunks}
+                    totalPages={totalPages}
+                    mode={strategy}
+                    liveQuestions={liveQuestions}
+                    totalQuestionsFound={totalQuestionsFound}
+                    filename={file?.name}
+                    onAbort={onAbort}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             <div
@@ -66,7 +105,7 @@ export function UploaderZone({
                         </div>
                         <div className="space-y-1">
                             <p className="text-sm font-semibold text-foreground">Drag and drop your PDF here</p>
-                            <p className="text-xs text-muted-foreground">or click below to browse your files (Max 10MB)</p>
+                            <p className="text-xs text-muted-foreground">or click below to browse your files (Supports large 50+ page PDFs)</p>
                         </div>
                         <label
                             htmlFor="pdf-upload"
@@ -83,17 +122,8 @@ export function UploaderZone({
                 disabled={!file || extracting}
                 className="w-full bg-primary hover:bg-primary/95 text-primary-foreground font-semibold py-4 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-                {extracting ? (
-                    <>
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        Processing layout structures...
-                    </>
-                ) : (
-                    <>
-                        <Sparkles className="h-5 w-5" />
-                        Process & Ingest Questions
-                    </>
-                )}
+                <Sparkles className="h-5 w-5" />
+                Process & Ingest Questions
             </button>
         </div>
     );

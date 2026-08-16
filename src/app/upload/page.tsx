@@ -22,6 +22,8 @@ import {
     CheckCircle2
 } from "lucide-react";
 
+import { LiveQuestionPreview } from "./_components/ExtractionProgress";
+
 export default function UploadPage() {
     const [strategy, setStrategy] = useState<"text" | "visual">("text");
     const [models, setModels] = useState<string[]>(["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro"]);
@@ -55,6 +57,15 @@ export default function UploadPage() {
     const [file, setFile] = useState<File | null>(null);
     const [isDragActive, setIsDragActive] = useState(false);
     const [extracting, setExtracting] = useState(false);
+    
+    const [progressPercent, setProgressPercent] = useState(0);
+    const [stageMessage, setStageMessage] = useState("");
+    const [completedChunks, setCompletedChunks] = useState(0);
+    const [totalChunks, setTotalChunks] = useState(0);
+    const [totalPages, setTotalPages] = useState<number | undefined>(undefined);
+    const [liveQuestions, setLiveQuestions] = useState<LiveQuestionPreview[]>([]);
+    const [abortController, setAbortController] = useState<AbortController | null>(null);
+
     const [result, setResult] = useState<{
         filename: string;
         saved_count: number;
@@ -110,12 +121,29 @@ export default function UploadPage() {
         }
     };
 
+    const handleAbort = () => {
+        if (abortController) {
+            abortController.abort();
+            setAbortController(null);
+            setExtracting(false);
+            toast.info("Extraction process cancelled.");
+        }
+    };
+
     const handleProcess = async () => {
         if (!file) return;
 
         setExtracting(true);
         setResult(null);
-        toast.info("Initializing PDF sliding-window extraction pipeline...");
+        setProgressPercent(2);
+        setStageMessage("Uploading PDF and initiating parallel AI extraction workers...");
+        setCompletedChunks(0);
+        setTotalChunks(0);
+        setTotalPages(undefined);
+        setLiveQuestions([]);
+
+        const controller = new AbortController();
+        setAbortController(controller);
 
         const formData = new FormData();
         formData.append("file", file);
@@ -126,42 +154,104 @@ export default function UploadPage() {
         formData.append("difficulty", defaultDifficulty);
 
         try {
-            const res = await extractionApi.post<{
-                status: string;
-                filename: string;
-                saved_count: number;
-                linked_count: number;
-                total_questions: number;
-                questions: any[];
-            }>("/extract", formData, {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                },
+            const extractionBaseUrl = process.env.NEXT_PUBLIC_EXTRACTION_API_URL || "http://localhost:8002/api";
+            const endpoint = `${extractionBaseUrl.replace(/\/+$/, '')}/extract-stream`;
+
+            const response = await fetch(endpoint, {
+                method: "POST",
+                body: formData,
+                signal: controller.signal
             });
 
-            if (res.data.status === "success") {
-                setResult({
-                    filename: res.data.filename,
-                    saved_count: res.data.saved_count,
-                    linked_count: res.data.linked_count,
-                    total_questions: res.data.total_questions,
-                    questions: res.data.questions || []
-                });
-                toast.success("Extraction Completed Successfully!");
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMsg = `Server error (Status ${response.status})`;
+                try {
+                    const parsed = JSON.parse(errorText);
+                    errorMsg = parsed.detail || parsed.message || errorMsg;
+                } catch {}
+                throw new Error(errorMsg);
+            }
 
-                api.post("/admin/audit-logs", {
-                    action: "PDF_INGEST",
-                    details: `Ingested exam paper PDF '${res.data.filename}' successfully (Questions: ${res.data.total_questions})`
-                }).catch(err => {
-                    console.error("Failed to write PDF ingestion audit log:", err);
-                });
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error("Unable to read streaming response from server.");
+            }
+
+            const decoder = new TextDecoder();
+            let buffer = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n\n");
+                buffer = lines.pop() || "";
+
+                for (const chunk of lines) {
+                    const trimmed = chunk.trim();
+                    if (!trimmed.startsWith("data:")) continue;
+                    const jsonStr = trimmed.replace(/^data:\s*/, "");
+                    if (!jsonStr) continue;
+
+                    try {
+                        const data = JSON.parse(jsonStr);
+
+                        if (data.event === "start") {
+                            setTotalChunks(data.total_chunks || 0);
+                            setTotalPages(data.total_pages || undefined);
+                            setProgressPercent(5);
+                            setStageMessage(`Started extraction: ${data.total_chunks} batches planned (${data.total_pages || 0} pages total)...`);
+                        } else if (data.event === "progress") {
+                            setCompletedChunks(data.completed_chunks || 0);
+                            setTotalChunks(data.total_chunks || 0);
+                            setProgressPercent(data.percent || 50);
+                            setStageMessage(data.message || `Processed chunk ${data.completed_chunks}/${data.total_chunks}`);
+                            if (data.new_questions && Array.isArray(data.new_questions) && data.new_questions.length > 0) {
+                                setLiveQuestions(prev => [...data.new_questions, ...prev]);
+                            }
+                        } else if (data.event === "saving") {
+                            setProgressPercent(data.percent || 95);
+                            setStageMessage(data.message || "Deduplicating and storing questions in database...");
+                        } else if (data.event === "complete") {
+                            setProgressPercent(100);
+                            setStageMessage("Extraction Completed Successfully!");
+                            setResult({
+                                filename: data.filename,
+                                saved_count: data.saved_count,
+                                linked_count: data.linked_count,
+                                total_questions: data.total_questions,
+                                questions: data.questions || []
+                            });
+                            toast.success(`Extraction Completed! ${data.total_questions} questions indexed.`);
+
+                            api.post("/admin/audit-logs", {
+                                action: "PDF_INGEST",
+                                details: `Ingested exam paper PDF '${data.filename}' successfully (Questions: ${data.total_questions})`
+                            }).catch(err => {
+                                console.error("Failed to write PDF ingestion audit log:", err);
+                            });
+                        } else if (data.event === "error") {
+                            throw new Error(data.detail || "Extraction pipeline encountered an error.");
+                        }
+                    } catch (parseErr: any) {
+                        if (parseErr.message && !parseErr.message.includes("JSON")) {
+                            throw parseErr;
+                        }
+                    }
+                }
             }
         } catch (err: any) {
+            if (err.name === "AbortError") {
+                return;
+            }
             console.error(err);
-            const msg = err.response?.data?.detail || "Pipeline processing failed.";
+            const msg = err.message || "Pipeline processing failed.";
             toast.error(`Ingestion failure: ${msg}`);
         } finally {
             setExtracting(false);
+            setAbortController(null);
         }
     };
 
@@ -365,6 +455,15 @@ export default function UploadPage() {
                             handleDrop={handleDrop}
                             handleFileChange={handleFileChange}
                             handleProcess={handleProcess}
+                            progressPercent={progressPercent}
+                            stageMessage={stageMessage}
+                            completedChunks={completedChunks}
+                            totalChunks={totalChunks}
+                            totalPages={totalPages}
+                            strategy={strategy}
+                            liveQuestions={liveQuestions}
+                            totalQuestionsFound={liveQuestions.length}
+                            onAbort={handleAbort}
                         />
                     ) : (
                         <div className="border border-border bg-card rounded-2xl p-6 space-y-5 shadow-sm">
