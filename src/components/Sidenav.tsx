@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { UploadCloud, Sliders, Settings, Menu, BarChart3, History, MessageSquare, LayoutDashboard, Users } from "lucide-react";
+import { UploadCloud, Sliders, Settings, Menu, BarChart3, History, MessageSquare, LayoutDashboard, Users, ShieldAlert } from "lucide-react";
 
 export const navLinks = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "User Dashboards", href: "/users", icon: Users },
+    { name: "Chat Audit", href: "/chat-audit", icon: ShieldAlert },
     { name: "Ingest PDF", href: "/upload", icon: UploadCloud },
     { name: "Assemble Paper", href: "/assemble", icon: Sliders },
     { name: "Manage Mocks", href: "/manage", icon: Settings },
