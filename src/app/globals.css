@@ -40,19 +40,19 @@
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(222 47% 11%);
 
-  /* 🟠 Primary: #FF5722 */
+  /* Primary: #FF5722 */
   --primary: hsl(15 100% 57%);
   --primary-foreground: hsl(0 0% 100%);
 
-  /* 🟢 Secondary: #4CAF50 */
+  /* Secondary: #4CAF50 */
   --secondary: hsl(122 39% 50%);
   --secondary-foreground: hsl(0 0% 100%);
 
-  /* 🔘 Neutral: #89726C */
+  /* Neutral: #89726C */
   --muted: hsl(210 20% 96%);
   --muted-foreground: hsl(13 12% 48%);
 
-  /* 🌲 Tertiary: #164334 */
+  /* Tertiary: #164334 */
   --accent: hsl(160 51% 17%);
   --accent-foreground: hsl(0 0% 100%);
 
@@ -86,19 +86,19 @@
   --popover: hsl(222 47% 14%);
   --popover-foreground: hsl(210 40% 98%);
 
-  /* 🟠 Primary: #FF5722 */
+  /* Primary: #FF5722 */
   --primary: hsl(15 100% 57%);
   --primary-foreground: hsl(0 0% 100%);
 
-  /* 🟢 Secondary: #4CAF50 */
+  /* Secondary: #4CAF50 */
   --secondary: hsl(122 39% 50%);
   --secondary-foreground: hsl(0 0% 100%);
 
-  /* 🔘 Neutral: #89726C */
+  /* Neutral: #89726C */
   --muted: hsl(222 47% 18%);
   --muted-foreground: hsl(215 20% 65%);
 
-  /* 🌲 Tertiary: #164334 */
+  /* Tertiary: #164334 */
   --accent: hsl(222 47% 18%);
   --accent-foreground: hsl(210 40% 98%);
 

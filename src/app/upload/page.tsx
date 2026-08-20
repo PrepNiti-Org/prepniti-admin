@@ -394,19 +394,20 @@ export default function UploadPage() {
     };
 
     return (
-        <div className="container max-w-7xl mx-auto space-y-8 animate-in fade-in duration-300">
-            <div className="bg-primary/10 border border-primary/20 rounded-2xl p-8 md:p-10 text-center space-y-3 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent -z-10" />
-
-                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-                    Ingest & Create Questions
-                </h1>
-                <p className="text-muted-foreground text-xs max-w-2xl mx-auto">
-                    Choose between parsing PDF layouts visually or prompting Gemini AI to generate custom curriculum question models instantly.
-                </p>
+        <div className="container max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
+            {/* Page Header */}
+            <div className="pb-4 border-b border-border flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-extrabold tracking-tight">
+                        Question Ingestion & AI Generation
+                    </h1>
+                    <p className="text-muted-foreground text-sm mt-1">
+                        Extract structured question papers visually from PDFs or generate custom curriculum questions using Gemini AI.
+                    </p>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-1 space-y-6">
                     <SettingsPanel
                         strategy={strategy}
@@ -425,24 +426,26 @@ export default function UploadPage() {
                 </div>
 
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="flex bg-muted p-1 rounded-xl w-fit">
+                    <div className="flex bg-muted/60 p-1 rounded-xl w-fit">
                         <button
                             onClick={() => setActiveTab("upload")}
-                            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${activeTab === "upload"
+                            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                activeTab === "upload"
                                     ? "bg-background text-primary shadow-sm"
                                     : "text-muted-foreground hover:text-foreground"
-                                }`}
+                            }`}
                         >
-                            <FileUp className="h-4 w-4" /> PDF Uploader Ingestion
+                            <FileUp className="h-4 w-4" /> PDF Ingestion Pipeline
                         </button>
                         <button
                             onClick={() => setActiveTab("ai")}
-                            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${activeTab === "ai"
+                            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                                activeTab === "ai"
                                     ? "bg-background text-primary shadow-sm"
                                     : "text-muted-foreground hover:text-foreground"
-                                }`}
+                            }`}
                         >
-                            <Cpu className="h-4 w-4" /> AI Prompt Generator
+                            <Cpu className="h-4 w-4" /> AI Question Generator
                         </button>
                     </div>
 
@@ -469,28 +472,28 @@ export default function UploadPage() {
                         <div className="border border-border bg-card rounded-2xl p-6 space-y-5 shadow-sm">
                             <div className="space-y-1">
                                 <h3 className="text-sm font-bold text-foreground">AI Generation Prompt</h3>
-                                <p className="text-xs text-muted-foreground">Describe a concept or topic, and specify the complexity configuration.</p>
+                                <p className="text-xs text-muted-foreground">Describe a concept or syllabus node, and specify question counts.</p>
                             </div>
 
                             <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-semibold text-muted-foreground">Concept Description / Subtopic:</label>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-muted-foreground">Concept Description / Topic Scope:</label>
                                     <textarea
                                         rows={3}
-                                        placeholder="e.g. Laws of thermodynamics, focusing on entropy calculations and engines."
+                                        placeholder="e.g. Laws of thermodynamics, focusing on entropy calculations, Carnot engine efficiency, and thermodynamic cycles."
                                         value={aiTopic}
                                         onChange={(e) => setAiTopic(e.target.value)}
-                                        className="w-full bg-primary/10 text-foreground border border-primary/50 focus-visible:bg-background focus-visible:ring-1 focus-visible:border-primary transition-all p-3.5 rounded-xl text-xs font-semibold focus:outline-none resize-none"
+                                        className="w-full bg-muted/40 text-foreground border border-border focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all p-3 rounded-xl text-xs font-semibold focus:outline-none resize-none leading-relaxed"
                                     />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
+                                    <div className="space-y-1.5">
                                         <label className="text-xs font-semibold text-muted-foreground">Target Difficulty:</label>
                                         <select
                                             value={aiDifficulty}
                                             onChange={(e) => setAiDifficulty(e.target.value)}
-                                            className="w-full bg-primary/10 text-foreground border border-primary/50 focus-visible:bg-background focus-visible:ring-1 focus-visible:border-primary transition-all h-10 px-3 rounded-xl text-xs font-semibold focus:outline-none cursor-pointer"
+                                            className="w-full bg-muted/40 text-foreground border border-border focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all h-10 px-3 rounded-xl text-xs font-semibold focus:outline-none cursor-pointer"
                                         >
                                             <option value="Easy" className="bg-background">Easy</option>
                                             <option value="Medium" className="bg-background">Medium</option>
@@ -498,7 +501,7 @@ export default function UploadPage() {
                                         </select>
                                     </div>
 
-                                    <div className="space-y-2">
+                                    <div className="space-y-1.5">
                                         <label className="text-xs font-semibold text-muted-foreground">Number of Questions:</label>
                                         <input
                                             type="number"
@@ -506,7 +509,7 @@ export default function UploadPage() {
                                             max={20}
                                             value={aiCount}
                                             onChange={(e) => setAiCount(Math.min(20, Math.max(1, parseInt(e.target.value) || 5)))}
-                                            className="w-full bg-primary/10 text-foreground border border-primary/50 focus-visible:bg-background focus-visible:ring-1 focus-visible:border-primary transition-all h-10 px-3.5 rounded-xl text-xs font-semibold focus:outline-none font-mono"
+                                            className="w-full bg-muted/40 text-foreground border border-border focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all h-10 px-3.5 rounded-xl text-xs font-semibold focus:outline-none font-mono"
                                         />
                                     </div>
                                 </div>
@@ -514,11 +517,11 @@ export default function UploadPage() {
                                 <button
                                     onClick={handleAIGenerate}
                                     disabled={generatingAI || !aiTopic.trim()}
-                                    className="w-full bg-primary hover:bg-primary/95 text-primary-foreground font-semibold py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-xs uppercase tracking-wider"
+                                    className="w-full bg-primary hover:opacity-90 text-primary-foreground font-semibold py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-xs uppercase tracking-wider"
                                 >
                                     {generatingAI ? (
                                         <>
-                                            <Loader2 className="h-4 w-4 animate-spin" /> Generating curriculum node models...
+                                            <Loader2 className="h-4 w-4 animate-spin" /> Generating questions with Gemini...
                                         </>
                                     ) : (
                                         <>

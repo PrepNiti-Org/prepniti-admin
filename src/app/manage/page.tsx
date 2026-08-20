@@ -1,27 +1,43 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { api } from "../../lib/api";
-import { Loader2, Upload, FileJson, X, CheckCircle2 } from "lucide-react";
+import {
+    Loader2,
+    Upload,
+    FileJson,
+    X,
+    CheckCircle2,
+    Search,
+    Plus,
+    Layers,
+    Clock,
+    BookOpen,
+    SlidersHorizontal,
+    RefreshCw,
+    FileSpreadsheet,
+} from "lucide-react";
 import { toast } from "sonner";
-import { PaperCard } from "./_components/PaperCard";
+import Link from "next/link";
+import { PaperCard, Paper } from "./_components/PaperCard";
 import { RenameModal } from "./_components/RenameModal";
 import { DeleteModal } from "./_components/DeleteModal";
-
-interface Paper {
-    id: string;
-    filename: string;
-    exam_name?: string;
-    uploaded_at: string;
-    q_count: number;
-    exam_type: string;
-    duration: number;
-    target_exam?: string;
-}
+import { PaperPreviewDrawer } from "./_components/PaperPreviewDrawer";
+import { BulkUploadModal } from "./_components/BulkUploadModal";
+import { Card, CardContent } from "../../components/ui/card";
 
 export default function ManageMocksPage() {
     const [papers, setPapers] = useState<Paper[]>([]);
     const [loadingPapers, setLoadingPapers] = useState(true);
+
+    // Filters & Search
+    const [searchQuery, setSearchQuery] = useState("");
+    const [targetExamFilter, setTargetExamFilter] = useState("all");
+    const [examTypeFilter, setExamTypeFilter] = useState("all");
+    const [sortBy, setSortBy] = useState<"newest" | "oldest" | "questions">("newest");
+
+    // Preview state
+    const [previewPaperId, setPreviewPaperId] = useState<string | null>(null);
 
     // Rename state
     const [renamingPaperId, setRenamingPaperId] = useState<string | null>(null);
@@ -33,14 +49,10 @@ export default function ManageMocksPage() {
 
     // Delete state
     const [deletingPaperId, setDeletingPaperId] = useState<string | null>(null);
-    const [confirmDeleteText, setConfirmDeleteText] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
-    // Import JSON state
+    // Bulk upload modal state
     const [isImportOpen, setIsImportOpen] = useState(false);
-    const [importing, setImporting] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const loadPapers = () => {
         setLoadingPapers(true);
@@ -91,14 +103,13 @@ export default function ManageMocksPage() {
     };
 
     const handleDeletePaper = async () => {
-        if (!deletingPaperId || !confirmDeleteText) return;
+        if (!deletingPaperId) return;
 
         setDeleting(true);
         try {
             await api.delete(`/admin/papers/${deletingPaperId}`);
             toast.success("Paper deleted successfully.");
             setDeletingPaperId(null);
-            setConfirmDeleteText(false);
             loadPapers();
         } catch {
             toast.error("Failed to delete paper.");
@@ -107,91 +118,206 @@ export default function ManageMocksPage() {
         }
     };
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            if (!file.name.endsWith(".json")) {
-                toast.error("Please upload a valid .json file.");
-                return;
+    // Calculate Summary Stats
+    const totalPapersCount = papers.length;
+    const totalQuestionsCount = papers.reduce((sum, p) => sum + (p.q_count || 0), 0);
+    const fullMocksCount = papers.filter(p => p.exam_type === "full").length;
+    const practiceCount = papers.filter(p => p.exam_type !== "full").length;
+
+    // Filter & Sort Papers
+    const filteredPapers = useMemo(() => {
+        return papers
+            .filter((p) => {
+                const name = (p.exam_name || p.filename || "").toLowerCase();
+                const matchesSearch = name.includes(searchQuery.toLowerCase()) || p.id.toLowerCase().includes(searchQuery.toLowerCase());
+                const matchesExam = targetExamFilter === "all" || (p.target_exam || "").toLowerCase() === targetExamFilter.toLowerCase();
+                const matchesType = examTypeFilter === "all" || p.exam_type === examTypeFilter;
+                return matchesSearch && matchesExam && matchesType;
+            })
+            .sort((a, b) => {
+                if (sortBy === "newest") {
+                    return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime();
+                } else if (sortBy === "oldest") {
+                    return new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime();
+                } else if (sortBy === "questions") {
+                    return (b.q_count || 0) - (a.q_count || 0);
+                }
+                return 0;
+            });
+    }, [papers, searchQuery, targetExamFilter, examTypeFilter, sortBy]);
+
+    const uniqueTargetExams = useMemo(() => {
+        const exams = new Set<string>();
+        papers.forEach(p => {
+            if (p.target_exam && p.target_exam.toLowerCase() !== "unspecified") {
+                exams.add(p.target_exam);
             }
-            setSelectedFile(file);
-        }
-    };
-
-    const handleImportJson = async () => {
-        if (!selectedFile) return;
-
-        setImporting(true);
-        try {
-            const fileContent = await selectedFile.text();
-            const parsedData = JSON.parse(fileContent);
-
-            if (!parsedData.filename || !Array.isArray(parsedData.questions) || parsedData.questions.length === 0) {
-                toast.error("Invalid paper structure. 'filename' and a non-empty 'questions' array are required.");
-                setImporting(false);
-                return;
-            }
-
-            const response = await api.post("/admin/papers/import-json", parsedData);
-            toast.success(`Successfully imported '${parsedData.filename}' (${response.data.question_count || parsedData.questions.length} questions).`);
-
-            setIsImportOpen(false);
-            setSelectedFile(null);
-            loadPapers();
-        } catch (err: any) {
-            if (err instanceof SyntaxError) {
-                toast.error("Failed to parse file: Invalid JSON syntax.");
-            } else {
-                toast.error(err.response?.data?.error || "Failed to import paper JSON.");
-            }
-        } finally {
-            setImporting(false);
-        }
-    };
+        });
+        return Array.from(exams);
+    }, [papers]);
 
     return (
-        <div className="container max-w-7xl mx-auto space-y-8 animate-in fade-in duration-300">
+        <div className="container max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
             {/* Page Header */}
             <div className="pb-4 border-b border-border flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-extrabold tracking-tight">Paper Management</h1>
+                    <h1 className="text-2xl font-extrabold tracking-tight">Mock Exam Management</h1>
                     <p className="text-muted-foreground text-sm mt-1">
-                        Manage active exam files, update paper metadata, and configure published mock repository entries.
+                        Oversee published test papers, inspect questions, configure mock metadata, and import structured papers.
                     </p>
                 </div>
-                <button
-                    onClick={() => setIsImportOpen(true)}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-opacity shadow-sm"
-                >
-                    <Upload className="h-4 w-4" />
-                    Import Paper JSON
-                </button>
+                <div className="flex flex-wrap items-center gap-2.5">
+                    <button
+                        onClick={loadPapers}
+                        className="px-3 py-2 border border-border rounded-xl text-xs font-semibold hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer flex items-center gap-1.5"
+                        title="Refresh List"
+                    >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                        onClick={() => setIsImportOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-border bg-card text-foreground font-semibold text-xs hover:bg-muted transition-colors shadow-sm cursor-pointer"
+                    >
+                        <FileSpreadsheet className="h-4 w-4 text-primary" />
+                        Upload Test File (.csv, .json)
+                    </button>
+                    <Link
+                        href="/assemble"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-xs hover:opacity-90 transition-opacity shadow-sm cursor-pointer"
+                    >
+                        <Plus className="h-4 w-4" />
+                        + Create Mock Test
+                    </Link>
+                </div>
             </div>
 
-            {/* Papers List */}
-            <div className="space-y-4">
-                {loadingPapers ? (
-                    <div className="py-20 text-center text-muted-foreground flex flex-col items-center justify-center gap-2">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                        <span className="text-xs">Fetching paper list...</span>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="bg-card/50">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Mock Papers</p>
+                            <p className="text-2xl font-black text-foreground mt-1">{totalPapersCount}</p>
+                        </div>
+                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                            <Layers className="h-5 w-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-card/50">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Questions Ingested</p>
+                            <p className="text-2xl font-black text-foreground mt-1">{totalQuestionsCount}</p>
+                        </div>
+                        <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                            <CheckCircle2 className="h-5 w-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-card/50">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Full-Length Mocks</p>
+                            <p className="text-2xl font-black text-foreground mt-1">{fullMocksCount}</p>
+                        </div>
+                        <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                            <Clock className="h-5 w-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-card/50">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Practice Sets</p>
+                            <p className="text-2xl font-black text-foreground mt-1">{practiceCount}</p>
+                        </div>
+                        <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                            <BookOpen className="h-5 w-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-card border border-border p-3.5 rounded-2xl shadow-sm">
+                <div className="relative w-full sm:w-80">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
+                    <input
+                        type="text"
+                        placeholder="Search by test name or ID..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-3 bg-muted/40 text-foreground border border-border focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all h-9 rounded-xl text-xs font-semibold focus:outline-none"
+                    />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <select
+                        value={targetExamFilter}
+                        onChange={(e) => setTargetExamFilter(e.target.value)}
+                        className="bg-muted/40 text-foreground border border-border focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all h-9 px-3 rounded-xl text-xs font-semibold focus:outline-none cursor-pointer flex-1 sm:flex-none"
+                    >
+                        <option value="all">All Exam Categories</option>
+                        {uniqueTargetExams.map((e) => <option key={e} value={e}>{e}</option>)}
+                    </select>
+                    <select
+                        value={examTypeFilter}
+                        onChange={(e) => setExamTypeFilter(e.target.value)}
+                        className="bg-muted/40 text-foreground border border-border focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all h-9 px-3 rounded-xl text-xs font-semibold focus:outline-none cursor-pointer flex-1 sm:flex-none"
+                    >
+                        <option value="all">All Formats</option>
+                        <option value="full_mock">Full Mock Test</option>
+                        <option value="practice">Practice Sheet</option>
+                        <option value="sectional">Sectional Test</option>
+                    </select>
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as any)}
+                        className="bg-muted/40 text-foreground border border-border focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all h-9 px-3 rounded-xl text-xs font-semibold focus:outline-none cursor-pointer flex-1 sm:flex-none"
+                    >
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="questions">Most Questions</option>
+                    </select>
+                </div>
+            </div>
+
+            {/* Paper Cards List */}
+            {loadingPapers ? (
+                <div className="py-24 text-center text-muted-foreground flex flex-col items-center justify-center gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="text-xs font-semibold">Loading mock papers...</span>
+                </div>
+            ) : filteredPapers.length === 0 ? (
+                <div className="py-20 text-center text-muted-foreground border border-dashed border-border rounded-2xl bg-card/40 text-xs space-y-3">
+                    <Layers className="h-10 w-10 mx-auto text-muted-foreground/40" />
+                    <p className="font-semibold text-foreground text-sm">No published test papers match your criteria.</p>
+                    <p className="text-muted-foreground max-w-sm mx-auto">Create a test paper using our visual builder or upload a question file (.csv, .xlsx, .json).</p>
+                    <div className="pt-2 flex items-center justify-center gap-3">
+                        <button onClick={() => setIsImportOpen(true)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border bg-card text-foreground font-semibold text-xs hover:bg-muted transition-colors cursor-pointer">
+                            <FileSpreadsheet className="h-4 w-4 text-primary" /> Upload File
+                        </button>
+                        <Link href="/assemble" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-xs hover:opacity-90 transition-opacity cursor-pointer">
+                            <Plus className="h-4 w-4" /> Create Test Paper
+                        </Link>
                     </div>
-                ) : papers.length === 0 ? (
-                    <div className="py-20 text-center text-muted-foreground border border-dashed rounded-2xl bg-card font-sans text-xs">
-                        No published test papers found. Import JSON or assemble new mock exams.
-                    </div>
-                ) : (
-                    papers.map((p) => (
+                </div>
+            ) : (
+                <div className="space-y-3.5">
+                    {filteredPapers.map((p) => (
                         <PaperCard
                             key={p.id}
                             paper={p}
+                            onPreview={(paper) => setPreviewPaperId(paper.id)}
                             onOpenRename={handleOpenRename}
                             onOpenDelete={(id) => setDeletingPaperId(id)}
                         />
-                    ))
-                )}
-            </div>
+                    ))}
+                </div>
+            )}
 
-            {/* Rename Modal */}
+            {/* Paper Preview Drawer */}
+            <PaperPreviewDrawer paperId={previewPaperId} onClose={() => setPreviewPaperId(null)} />
+
+            {/* Rename / Details Modal */}
             <RenameModal
                 isOpen={!!renamingPaperId}
                 paperTitle={renameTitle}
@@ -210,98 +336,17 @@ export default function ManageMocksPage() {
             {/* Delete Modal */}
             <DeleteModal
                 isOpen={!!deletingPaperId}
-                confirmDeleteText={confirmDeleteText}
-                setConfirmDeleteText={setConfirmDeleteText}
-                onClose={() => {
-                    setDeletingPaperId(null);
-                    setConfirmDeleteText(false);
-                }}
+                onClose={() => setDeletingPaperId(null)}
                 onDelete={handleDeletePaper}
                 deleting={deleting}
             />
 
-            {/* JSON Import Modal */}
-            {isImportOpen && (
-                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 space-y-6 shadow-xl animate-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between pb-2 border-b border-border">
-                            <div className="flex items-center gap-2">
-                                <FileJson className="h-5 w-5 text-primary" />
-                                <h2 className="text-lg font-bold">Import Exam JSON</h2>
-                            </div>
-                            <button
-                                onClick={() => {
-                                    setIsImportOpen(false);
-                                    setSelectedFile(null);
-                                }}
-                                className="p-1 rounded-lg text-muted-foreground hover:bg-accent transition-colors"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
-                        </div>
-
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                            Upload a formatted JSON file containing paper specifications, questions, options, and explanations.
-                        </p>
-
-                        <div
-                            onClick={() => fileInputRef.current?.click()}
-                            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${selectedFile
-                                ? "border-primary/50 bg-primary/5"
-                                : "border-border hover:border-primary/40 bg-accent/20"
-                                }`}
-                        >
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".json"
-                                onChange={handleFileSelect}
-                                className="hidden"
-                            />
-                            {selectedFile ? (
-                                <div className="flex flex-col items-center gap-2 text-primary">
-                                    <CheckCircle2 className="h-8 w-8" />
-                                    <span className="text-sm font-semibold truncate max-w-[240px]">
-                                        {selectedFile.name}
-                                    </span>
-                                    <span className="text-[10px] text-muted-foreground">
-                                        {(selectedFile.size / 1024).toFixed(1)} KB
-                                    </span>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                                    <Upload className="h-8 w-8 text-muted-foreground/60" />
-                                    <span className="text-xs font-medium">Click to upload or drag .json file</span>
-                                    <span className="text-[10px] text-muted-foreground/60">JSON up to 10MB</span>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex items-center justify-end gap-3 pt-2">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setIsImportOpen(false);
-                                    setSelectedFile(null);
-                                }}
-                                disabled={importing}
-                                className="px-4 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:bg-accent transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleImportJson}
-                                disabled={!selectedFile || importing}
-                                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-all"
-                            >
-                                {importing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                                {importing ? "Importing..." : "Import Paper"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Bulk Upload Modal */}
+            <BulkUploadModal
+                isOpen={isImportOpen}
+                onClose={() => setIsImportOpen(false)}
+                onSuccess={loadPapers}
+            />
         </div>
     );
 }

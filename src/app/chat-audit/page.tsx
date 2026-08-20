@@ -101,7 +101,7 @@ async function decryptAdminMessage(msg: ChatMessage, adminPrivKey: CryptoKey): P
 
         const adminWrappedDek = envelopesObj["admin"];
         if (!adminWrappedDek) {
-            return "[🔒 Admin escrow envelope not present in this message]";
+            return "[Admin escrow envelope not present in this message]";
         }
 
         // 1. Unwrap DEK with Admin Private Key
@@ -134,7 +134,7 @@ async function decryptAdminMessage(msg: ChatMessage, adminPrivKey: CryptoKey): P
         return new TextDecoder().decode(decryptedBuffer);
     } catch (err) {
         console.error("Admin decryption failed:", err);
-        return "[🔒 Decryption failed: invalid admin key or corrupted ciphertext]";
+        return "[Decryption failed: invalid admin key or corrupted ciphertext]";
     }
 }
 

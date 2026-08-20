@@ -101,7 +101,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                     {children}
                 </main>
             </div>
-            <Toaster position="top-right" theme="dark" richColors />
+            <Toaster position="top-right" theme="dark" richColors closeButton />
         </div>
     );
 }
