@@ -3,6 +3,7 @@ import Cookies from 'js-cookie';
 
 export const api = axios.create({
     baseURL: process.env.NEXT_PUBLIC_ADMIN_API_URL || "http://localhost:8081/api",
+    timeout: 90000,
     headers: {
         "Content-Type": "application/json",
     },
@@ -18,4 +19,5 @@ api.interceptors.request.use((config) => {
 
 export const extractionApi = axios.create({
     baseURL: process.env.NEXT_PUBLIC_EXTRACTION_API_URL || "http://localhost:8002/api",
+    timeout: 90000,
 });
