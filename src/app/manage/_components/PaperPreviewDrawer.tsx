@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { MathRenderer } from "../../../components/MathRenderer";
 
 interface Option {
     id: string;
@@ -220,9 +221,9 @@ export function PaperPreviewDrawer({ paperId, onClose }: PaperPreviewDrawerProps
                                             )}
 
                                             {/* Question Text */}
-                                            <p className="text-xs font-semibold text-foreground leading-relaxed whitespace-pre-wrap">
-                                                {q.question_text}
-                                            </p>
+                                            <div className="text-xs font-semibold text-foreground leading-relaxed">
+                                                <MathRenderer text={q.question_text} />
+                                            </div>
 
                                             {/* Options */}
                                             {q.options && q.options.length > 0 && (
@@ -236,11 +237,13 @@ export function PaperPreviewDrawer({ paperId, onClose }: PaperPreviewDrawerProps
                                                                     : "border-border text-muted-foreground bg-muted/20"
                                                             }`}
                                                         >
-                                                            <div className="flex items-center gap-2 min-w-0">
+                                                            <div className="flex items-center gap-2 min-w-0 flex-1">
                                                                 <span className="text-[10px] font-mono font-bold text-muted-foreground shrink-0">
                                                                     {String.fromCharCode(65 + optIdx)}.
                                                                 </span>
-                                                                <span className="truncate">{opt.option_text}</span>
+                                                                <span className="flex-1">
+                                                                    <MathRenderer text={opt.option_text} inline />
+                                                                </span>
                                                             </div>
                                                             {opt.is_correct && (
                                                                 <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
@@ -252,11 +255,11 @@ export function PaperPreviewDrawer({ paperId, onClose }: PaperPreviewDrawerProps
 
                                             {/* Explanation */}
                                             {q.explanation && q.explanation.toLowerCase() !== "none" && (
-                                                <div className="text-[11px] leading-relaxed text-muted-foreground bg-muted/30 border border-border/40 p-2.5 rounded-lg">
-                                                    <span className="font-bold text-primary text-[10px] uppercase block mb-0.5">
+                                                <div className="text-[11px] leading-relaxed text-muted-foreground bg-muted/30 border border-border/40 p-2.5 rounded-lg space-y-0.5">
+                                                    <span className="font-bold text-primary text-[10px] uppercase block">
                                                         Explanation:
                                                     </span>
-                                                    {q.explanation}
+                                                    <MathRenderer text={q.explanation} />
                                                 </div>
                                             )}
                                         </div>

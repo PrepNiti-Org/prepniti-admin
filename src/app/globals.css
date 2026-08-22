@@ -1,5 +1,39 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
+@import "katex/dist/katex.min.css";
+
+/* High-precision KaTeX mathematical typography */
+.math-content {
+  line-height: 1.7;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.math-content .katex {
+  font-size: 1.1em;
+  text-rendering: optimizeLegibility;
+}
+
+.inline-math {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  padding: 0 0.12em;
+}
+
+.inline-math .katex {
+  font-size: 1.12em;
+}
+
+.katex-display {
+  display: flex !important;
+  justify-content: center;
+  margin: 0.8em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25em 0;
+}
 
 @custom-variant dark (&:is(.dark *));
 

@@ -16,6 +16,7 @@ export interface Question {
     topic?: string;
     difficulty?: string;
     explanation?: string;
+    passage_text?: string;
     options: Option[];
     context_passage?: ContextPassage;
     sources?: string[];
