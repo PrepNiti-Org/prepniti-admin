@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,23 +14,27 @@ import {
     MessageSquare,
     LayoutDashboard,
     Users,
+    ShieldAlert,
+    Shield,
 } from "lucide-react";
+import { useAdminAuth } from "../hooks/useAdminAuth";
 
 export interface NavGroup {
     title: string;
+    isSuperAdminOnly?: boolean;
     items: {
         name: string;
         href: string;
         icon: React.ComponentType<{ className?: string }>;
+        isSuperAdminOnly?: boolean;
     }[];
 }
 
-export const navGroups: NavGroup[] = [
+export const baseNavGroups: NavGroup[] = [
     {
         title: "Overview",
         items: [
             { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-            { name: "User Dashboards", href: "/users", icon: Users },
         ],
     },
     {
@@ -41,16 +46,26 @@ export const navGroups: NavGroup[] = [
         ],
     },
     {
-        title: "Operations & Logs",
+        title: "Operations & Analytics",
         items: [
             { name: "Attempts Analytics", href: "/analytics", icon: BarChart3 },
             { name: "User Feedback", href: "/feedback", icon: MessageSquare },
-            { name: "System Audit Logs", href: "/audit-logs", icon: History },
         ],
     },
 ];
 
+export const superAdminNavGroup: NavGroup = {
+    title: "Super Admin",
+    isSuperAdminOnly: true,
+    items: [
+        { name: "User Dashboards", href: "/users", icon: Users, isSuperAdminOnly: true },
+        { name: "Chat Audit & Moderation", href: "/chat-audit", icon: ShieldAlert, isSuperAdminOnly: true },
+        { name: "System Audit Logs", href: "/audit-logs", icon: History, isSuperAdminOnly: true },
+    ],
+};
+
 // Flat export for compatibility
+export const navGroups: NavGroup[] = [...baseNavGroups, superAdminNavGroup];
 export const navLinks = navGroups.flatMap(g => g.items);
 
 interface SidenavProps {
@@ -62,6 +77,11 @@ interface SidenavProps {
 
 export function Sidenav({ className = "", onItemClick, isCollapsed = false, onToggle }: SidenavProps) {
     const pathname = usePathname();
+    const { isSuperAdmin } = useAdminAuth();
+
+    const activeGroups = useMemo(() => {
+        return isSuperAdmin ? [...baseNavGroups, superAdminNavGroup] : baseNavGroups;
+    }, [isSuperAdmin]);
 
     return (
         <aside className={`flex flex-col h-full bg-sidebar border-r transition-all duration-300 ${isCollapsed ? "w-16" : "w-64"} ${className}`}>
@@ -81,10 +101,15 @@ export function Sidenav({ className = "", onItemClick, isCollapsed = false, onTo
             </div>
 
             <div className="flex-1 py-4 px-2 space-y-6 overflow-y-auto overflow-x-hidden">
-                {navGroups.map((group) => (
+                {activeGroups.map((group) => (
                     <div key={group.title} className="space-y-1">
                         {!isCollapsed && (
-                            <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
+                            <div className={`px-3 pb-1 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                                group.isSuperAdminOnly 
+                                    ? "text-amber-600 dark:text-amber-400 font-extrabold" 
+                                    : "text-muted-foreground/60"
+                            }`}>
+                                {group.isSuperAdminOnly && <Shield className="h-3 w-3" />}
                                 {group.title}
                             </div>
                         )}

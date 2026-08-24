@@ -93,19 +93,35 @@ export default function UsersListPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchQuery, loadUsers, pagination.pageSize]);
 
+    const handleRoleChange = async (userId: string, newRole: string) => {
+        try {
+            await api.put(`/admin/users/${userId}/role`, { role: newRole });
+            toast.success("User role updated successfully");
+            setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            toast.error("Failed to update role", {
+                description: error.response?.data?.error || "Could not update user role.",
+            });
+        }
+    };
+
     const columns = useMemo<ColumnDef<UserProfile>[]>(() => [
         {
-            id: "username",
             accessorKey: "username",
-            header: "User / Aspirant",
+            header: "User / Account",
             cell: ({ row }) => (
-                <div className="flex items-center gap-2.5">
-                    <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <User className="h-4 w-4 text-primary" />
+                <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-xs text-primary shrink-0">
+                        {row.original.username.substring(0, 2).toUpperCase()}
                     </div>
                     <div className="flex flex-col">
-                        <span className="font-semibold text-foreground text-xs">@{row.original.username}</span>
-                        <span className="text-[9px] text-muted-foreground font-mono">ID: {row.original.id}</span>
+                        <span className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer">
+                            {row.original.username}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                            ID: {row.original.id.substring(0, 8)}...
+                        </span>
                     </div>
                 </div>
             ),
@@ -123,11 +139,27 @@ export default function UsersListPage() {
         {
             accessorKey: "role",
             header: "Role / Permission",
-            cell: ({ row }) => (
-                <span className="text-[9px] text-primary font-bold bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full uppercase tracking-wider font-mono">
-                    {row.original.role || "user"}
-                </span>
-            ),
+            cell: ({ row }) => {
+                const userRole = row.original.role || "aspirant";
+                return (
+                    <select
+                        value={userRole}
+                        onChange={(e) => handleRoleChange(row.original.id, e.target.value)}
+                        className={`text-[10px] font-bold rounded-lg px-2 py-1 border transition-colors outline-none cursor-pointer ${
+                            userRole === "super_admin"
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                                : userRole === "admin"
+                                ? "bg-primary/10 text-primary border-primary/30"
+                                : "bg-muted/40 text-muted-foreground border-border"
+                        }`}
+                    >
+                        <option value="aspirant">Aspirant</option>
+                        <option value="candidate">Candidate</option>
+                        <option value="admin">Admin</option>
+                        <option value="super_admin">Super Admin</option>
+                    </select>
+                );
+            },
         },
         {
             accessorKey: "created_at",
@@ -206,8 +238,10 @@ export default function UsersListPage() {
                     className="bg-primary/10 text-foreground border border-primary/50 h-9 px-3 rounded-xl text-xs font-semibold focus:outline-none cursor-pointer"
                 >
                     <option value="all">All Roles</option>
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
+                    <option value="aspirant">Aspirants</option>
+                    <option value="candidate">Candidates</option>
+                    <option value="admin">Admins</option>
+                    <option value="super_admin">Super Admins</option>
                 </select>
             </div>
 

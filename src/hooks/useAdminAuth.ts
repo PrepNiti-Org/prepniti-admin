@@ -22,7 +22,7 @@ export function useAdminAuth() {
         if (token && storedUser) {
             try {
                 const parsed = JSON.parse(storedUser);
-                if (parsed && parsed.role === "admin") {
+                if (parsed && (parsed.role === "admin" || parsed.role === "super_admin")) {
                     setUser(parsed);
                     setIsAuthenticated(true);
                 }
@@ -41,5 +41,7 @@ export function useAdminAuth() {
         window.location.href = "/login";
     };
 
-    return { user, loading, isAuthenticated, logout };
+    const isSuperAdmin = user?.role === "super_admin";
+
+    return { user, loading, isAuthenticated, isSuperAdmin, logout };
 }

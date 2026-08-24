@@ -113,6 +113,20 @@ export default function UserDashboardClient({ id }: { id: string }) {
     const [data, setData] = useState<UserDashboardPayload | null>(null);
     const [loading, setLoading] = useState(true);
 
+    const handleRoleChange = async (newRole: string) => {
+        if (!data) return;
+        try {
+            await api.put(`/admin/users/${id}/role`, { role: newRole });
+            toast.success("User role updated successfully");
+            setData(prev => prev ? { ...prev, user: { ...prev.user, role: newRole } } : null);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            toast.error("Failed to update role", {
+                description: error.response?.data?.error || "Could not update user role.",
+            });
+        }
+    };
+
     useEffect(() => {
         setLoading(true);
         api.get<UserDashboardPayload>(`/admin/users/${id}/dashboard`)
@@ -182,10 +196,13 @@ export default function UserDashboardClient({ id }: { id: string }) {
     });
 
     return (
-        <div className="container max-w-7xl mx-auto space-y-8 animate-in fade-in duration-300">
-            <div>
-                <Link href="/users" className="text-xs text-muted-foreground hover:text-foreground font-bold flex items-center gap-1.5 transition-colors">
-                    <ArrowLeft className="h-3.5 w-3.5" /> Back to Users Directory
+        <div className="space-y-6 max-w-7xl mx-auto pb-12">
+            <div className="flex items-center justify-between gap-4">
+                <Link
+                    href="/users"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+                >
+                    <ArrowLeft className="h-4 w-4" /> Back to Users Directory
                 </Link>
             </div>
 
@@ -201,9 +218,22 @@ export default function UserDashboardClient({ id }: { id: string }) {
                                 <h1 className="text-xl md:text-2xl font-black tracking-tight">
                                     @{user.username}
                                 </h1>
-                                <span className="text-[10px] text-primary font-bold bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full uppercase tracking-wider font-mono">
-                                    {user.role || "User"}
-                                </span>
+                                <select
+                                    value={user.role || "aspirant"}
+                                    onChange={(e) => handleRoleChange(e.target.value)}
+                                    className={`text-[10px] font-bold rounded-lg px-2.5 py-1 border transition-colors outline-none cursor-pointer ${
+                                        user.role === "super_admin"
+                                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 font-mono"
+                                            : user.role === "admin"
+                                            ? "bg-primary/10 text-primary border-primary/30 font-mono"
+                                            : "bg-muted/40 text-muted-foreground border-border font-mono"
+                                    }`}
+                                >
+                                    <option value="aspirant">Aspirant</option>
+                                    <option value="candidate">Candidate</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="super_admin">Super Admin</option>
+                                </select>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                                 <span className="flex items-center gap-1">

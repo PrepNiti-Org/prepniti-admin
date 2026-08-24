@@ -18,7 +18,7 @@ export default function AdminLoginPage() {
         if (token && stored) {
             try {
                 const parsed = JSON.parse(stored);
-                if (parsed?.role === "admin") {
+                if (parsed?.role === "admin" || parsed?.role === "super_admin") {
                     window.location.replace("/upload");
                 }
             } catch (_) { }
@@ -33,7 +33,7 @@ export default function AdminLoginPage() {
         try {
             const { data } = await api.post("/auth/login", { email, password });
 
-            if (data.user?.role !== "admin") {
+            if (data.user?.role !== "admin" && data.user?.role !== "super_admin") {
                 toast.error("Access Denied", {
                     description: "This workspace is restricted to administrator accounts only.",
                 });
@@ -48,8 +48,9 @@ export default function AdminLoginPage() {
             });
             localStorage.setItem("admin_user", JSON.stringify(data.user));
 
+            const isSuper = data.user?.role === "super_admin";
             toast.success(`Welcome, ${data.user.username}`, {
-                description: "Admin workspace unlocked.",
+                description: isSuper ? "Super Administrator workspace unlocked with elevated permissions." : "Admin workspace unlocked.",
             });
             window.location.replace("/upload");
         } catch (err: unknown) {
