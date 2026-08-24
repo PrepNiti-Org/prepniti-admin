@@ -27,6 +27,9 @@ vi.mock("lucide-react", () => ({
   SlidersHorizontal: () => <svg data-testid="sliders-icon" />,
   RefreshCw: () => <svg data-testid="refresh-icon" />,
   FileSpreadsheet: () => <svg data-testid="filespreadsheet-icon" />,
+  Globe: () => <svg data-testid="globe-icon" />,
+  Lock: () => <svg data-testid="lock-icon" />,
+  ShieldAlert: () => <svg data-testid="shield-alert-icon" />,
 }));
 
 // Mock sub-components
@@ -55,7 +58,7 @@ describe("Manage Mocks Page (Admin)", () => {
 
     // Eventually empty repository text displays
     await waitFor(() => {
-      expect(screen.getByText(/No published test papers match your criteria/)).toBeInTheDocument();
+      expect(screen.getByText(/No test papers match your criteria/)).toBeInTheDocument();
     });
   });
 });

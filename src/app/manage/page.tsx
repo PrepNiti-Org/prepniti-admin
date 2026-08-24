@@ -16,6 +16,9 @@ import {
     SlidersHorizontal,
     RefreshCw,
     FileSpreadsheet,
+    Globe,
+    Lock,
+    ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -25,8 +28,11 @@ import { DeleteModal } from "./_components/DeleteModal";
 import { PaperPreviewDrawer } from "./_components/PaperPreviewDrawer";
 import { BulkUploadModal } from "./_components/BulkUploadModal";
 import { Card, CardContent } from "../../components/ui/card";
+import { useAdminAuth } from "../../hooks/useAdminAuth";
 
 export default function ManageMocksPage() {
+    const { isSuperAdmin, user } = useAdminAuth();
+
     const [papers, setPapers] = useState<Paper[]>([]);
     const [loadingPapers, setLoadingPapers] = useState(true);
 
@@ -34,6 +40,7 @@ export default function ManageMocksPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [targetExamFilter, setTargetExamFilter] = useState("all");
     const [examTypeFilter, setExamTypeFilter] = useState("all");
+    const [publishStatusFilter, setPublishStatusFilter] = useState<"all" | "published" | "draft">("all");
     const [sortBy, setSortBy] = useState<"newest" | "oldest" | "questions">("newest");
 
     // Preview state
@@ -50,6 +57,9 @@ export default function ManageMocksPage() {
     // Delete state
     const [deletingPaperId, setDeletingPaperId] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
+
+    // Publish toggle state
+    const [togglingPaperId, setTogglingPaperId] = useState<string | null>(null);
 
     // Bulk upload modal state
     const [isImportOpen, setIsImportOpen] = useState(false);
@@ -111,18 +121,44 @@ export default function ManageMocksPage() {
             toast.success("Paper deleted successfully.");
             setDeletingPaperId(null);
             loadPapers();
-        } catch {
-            toast.error("Failed to delete paper.");
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            toast.error("Failed to delete paper", {
+                description: error.response?.data?.error || "Super Admin permission required.",
+            });
         } finally {
             setDeleting(false);
         }
     };
 
+    const handleTogglePublish = async (p: Paper) => {
+        setTogglingPaperId(p.id);
+        const nextState = !p.is_published;
+        try {
+            await api.patch(`/admin/papers/${p.id}/publish`, {
+                is_published: nextState,
+            });
+            toast.success(
+                nextState 
+                    ? `"${p.exam_name || p.filename}" is now published and live on the student portal!` 
+                    : `"${p.exam_name || p.filename}" is now unpublished and hidden from students.`
+            );
+            loadPapers();
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            toast.error("Failed to update publication status", {
+                description: error.response?.data?.error || "Only Super Admins can publish or unpublish mock papers.",
+            });
+        } finally {
+            setTogglingPaperId(null);
+        }
+    };
+
     // Calculate Summary Stats
     const totalPapersCount = papers.length;
+    const publishedCount = papers.filter(p => p.is_published).length;
+    const draftsCount = papers.filter(p => !p.is_published).length;
     const totalQuestionsCount = papers.reduce((sum, p) => sum + (p.q_count || 0), 0);
-    const fullMocksCount = papers.filter(p => p.exam_type === "full").length;
-    const practiceCount = papers.filter(p => p.exam_type !== "full").length;
 
     // Filter & Sort Papers
     const filteredPapers = useMemo(() => {
@@ -132,7 +168,15 @@ export default function ManageMocksPage() {
                 const matchesSearch = name.includes(searchQuery.toLowerCase()) || p.id.toLowerCase().includes(searchQuery.toLowerCase());
                 const matchesExam = targetExamFilter === "all" || (p.target_exam || "").toLowerCase() === targetExamFilter.toLowerCase();
                 const matchesType = examTypeFilter === "all" || p.exam_type === examTypeFilter;
-                return matchesSearch && matchesExam && matchesType;
+                
+                let matchesPublish = true;
+                if (publishStatusFilter === "published") {
+                    matchesPublish = Boolean(p.is_published);
+                } else if (publishStatusFilter === "draft") {
+                    matchesPublish = !p.is_published;
+                }
+
+                return matchesSearch && matchesExam && matchesType && matchesPublish;
             })
             .sort((a, b) => {
                 if (sortBy === "newest") {
@@ -144,7 +188,7 @@ export default function ManageMocksPage() {
                 }
                 return 0;
             });
-    }, [papers, searchQuery, targetExamFilter, examTypeFilter, sortBy]);
+    }, [papers, searchQuery, targetExamFilter, examTypeFilter, publishStatusFilter, sortBy]);
 
     const uniqueTargetExams = useMemo(() => {
         const exams = new Set<string>();
@@ -161,9 +205,18 @@ export default function ManageMocksPage() {
             {/* Page Header */}
             <div className="pb-4 border-b border-border flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-extrabold tracking-tight">Mock Exam Management</h1>
+                    <div className="flex items-center gap-2.5">
+                        <h1 className="text-2xl font-extrabold tracking-tight">Mock Exam Management</h1>
+                        {isSuperAdmin && (
+                            <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
+                                Super Admin Mode
+                            </span>
+                        )}
+                    </div>
                     <p className="text-muted-foreground text-sm mt-1">
-                        Oversee published test papers, inspect questions, configure mock metadata, and import structured papers.
+                        {isSuperAdmin 
+                            ? "Approve & publish mock papers, manage questions, and control student access." 
+                            : "Compile and import draft mock papers for Super Admin review and publication."}
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2.5">
@@ -191,6 +244,7 @@ export default function ManageMocksPage() {
                 </div>
             </div>
 
+            {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="bg-card/50">
                     <CardContent className="p-4 flex items-center justify-between">
@@ -206,38 +260,39 @@ export default function ManageMocksPage() {
                 <Card className="bg-card/50">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Questions Ingested</p>
-                            <p className="text-2xl font-black text-foreground mt-1">{totalQuestionsCount}</p>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Published · Live on App</p>
+                            <p className="text-2xl font-black text-emerald-500 mt-1">{publishedCount}</p>
                         </div>
                         <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                            <CheckCircle2 className="h-5 w-5" />
+                            <Globe className="h-5 w-5" />
                         </div>
                     </CardContent>
                 </Card>
                 <Card className="bg-card/50">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Full-Length Mocks</p>
-                            <p className="text-2xl font-black text-foreground mt-1">{fullMocksCount}</p>
-                        </div>
-                        <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
-                            <Clock className="h-5 w-5" />
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="bg-card/50">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Practice Sets</p>
-                            <p className="text-2xl font-black text-foreground mt-1">{practiceCount}</p>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Drafts · Unpublished</p>
+                            <p className="text-2xl font-black text-amber-500 mt-1">{draftsCount}</p>
                         </div>
                         <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-                            <BookOpen className="h-5 w-5" />
+                            <Lock className="h-5 w-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-card/50">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Questions</p>
+                            <p className="text-2xl font-black text-foreground mt-1">{totalQuestionsCount}</p>
+                        </div>
+                        <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                            <CheckCircle2 className="h-5 w-5" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
+            {/* Filter & Search Bar */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-card border border-border p-3.5 rounded-2xl shadow-sm">
                 <div className="relative w-full sm:w-80">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
@@ -250,6 +305,17 @@ export default function ManageMocksPage() {
                     />
                 </div>
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    {/* Publication Status Filter */}
+                    <select
+                        value={publishStatusFilter}
+                        onChange={(e) => setPublishStatusFilter(e.target.value as any)}
+                        className="bg-muted/40 text-foreground border border-border focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all h-9 px-3 rounded-xl text-xs font-semibold focus:outline-none cursor-pointer flex-1 sm:flex-none"
+                    >
+                        <option value="all">All Statuses</option>
+                        <option value="published">🟢 Published Only</option>
+                        <option value="draft">🟡 Drafts Only</option>
+                    </select>
+
                     <select
                         value={targetExamFilter}
                         onChange={(e) => setTargetExamFilter(e.target.value)}
@@ -258,6 +324,7 @@ export default function ManageMocksPage() {
                         <option value="all">All Exam Categories</option>
                         {uniqueTargetExams.map((e) => <option key={e} value={e}>{e}</option>)}
                     </select>
+
                     <select
                         value={examTypeFilter}
                         onChange={(e) => setExamTypeFilter(e.target.value)}
@@ -268,6 +335,7 @@ export default function ManageMocksPage() {
                         <option value="practice">Practice Sheet</option>
                         <option value="sectional">Sectional Test</option>
                     </select>
+
                     <select
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value as any)}
@@ -284,13 +352,13 @@ export default function ManageMocksPage() {
             {loadingPapers ? (
                 <div className="py-24 text-center text-muted-foreground flex flex-col items-center justify-center gap-2">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <span className="text-xs font-semibold">Loading mock papers...</span>
+                    <span className="text-xs font-semibold">Loading mock papers repository...</span>
                 </div>
             ) : filteredPapers.length === 0 ? (
                 <div className="py-20 text-center text-muted-foreground border border-dashed border-border rounded-2xl bg-card/40 text-xs space-y-3">
                     <Layers className="h-10 w-10 mx-auto text-muted-foreground/40" />
-                    <p className="font-semibold text-foreground text-sm">No published test papers match your criteria.</p>
-                    <p className="text-muted-foreground max-w-sm mx-auto">Create a test paper using our visual builder or upload a question file (.csv, .xlsx, .json).</p>
+                    <p className="font-semibold text-foreground text-sm">No test papers match your criteria.</p>
+                    <p className="text-muted-foreground max-w-sm mx-auto">Create a test paper using the visual builder or upload a structured question file (.csv, .xlsx, .json).</p>
                     <div className="pt-2 flex items-center justify-center gap-3">
                         <button onClick={() => setIsImportOpen(true)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-border bg-card text-foreground font-semibold text-xs hover:bg-muted transition-colors cursor-pointer">
                             <FileSpreadsheet className="h-4 w-4 text-primary" /> Upload File
@@ -306,9 +374,12 @@ export default function ManageMocksPage() {
                         <PaperCard
                             key={p.id}
                             paper={p}
+                            isSuperAdmin={isSuperAdmin}
                             onPreview={(paper) => setPreviewPaperId(paper.id)}
                             onOpenRename={handleOpenRename}
                             onOpenDelete={(id) => setDeletingPaperId(id)}
+                            onTogglePublish={handleTogglePublish}
+                            togglingPublish={togglingPaperId === p.id}
                         />
                     ))}
                 </div>
