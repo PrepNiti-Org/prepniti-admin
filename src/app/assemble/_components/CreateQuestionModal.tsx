@@ -1,7 +1,9 @@
 "use client";
 
-import React from "react";
-import { X, Loader2 } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { X, Loader2, UploadCloud, Image as ImageIcon, Trash2, Moon, Sun } from "lucide-react";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 interface CreateQuestionModalProps {
     isOpen: boolean;
@@ -21,6 +23,12 @@ interface CreateQuestionModalProps {
     title?: string;
     submitText?: string;
     description?: string;
+    manImageUrl?: string;
+    setManImageUrl?: (v: string) => void;
+    manImageDarkUrl?: string;
+    setManImageDarkUrl?: (v: string) => void;
+    manImageDarkInvert?: boolean;
+    setManImageDarkInvert?: (v: boolean) => void;
 }
 
 export function CreateQuestionModal({
@@ -40,9 +48,56 @@ export function CreateQuestionModal({
     addingQuestion,
     title = "Create New Question",
     submitText = "Create Question",
-    description = "Add a new manual question directly into the repository bank."
+    description = "Add a new manual question directly into the repository bank.",
+    manImageUrl = "",
+    setManImageUrl,
+    manImageDarkUrl = "",
+    setManImageDarkUrl,
+    manImageDarkInvert = false,
+    setManImageDarkInvert,
 }: CreateQuestionModalProps) {
+    const [uploadingLight, setUploadingLight] = useState(false);
+    const [uploadingDark, setUploadingDark] = useState(false);
+    const [showDarkUploader, setShowDarkUploader] = useState(Boolean(manImageDarkUrl));
+    const lightInputRef = useRef<HTMLInputElement>(null);
+    const darkInputRef = useRef<HTMLInputElement>(null);
+
     if (!isOpen) return null;
+
+    const handleFileUpload = async (file: File, variant: "light" | "dark") => {
+        if (file.size > 300 * 1024) {
+            toast.error(`Diagram size (${Math.round(file.size / 1024)} KB) exceeds 300 KB limit. Please compress or optimize the image.`);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("variant", variant);
+
+        if (variant === "light") setUploadingLight(true);
+        else setUploadingDark(true);
+
+        try {
+            const res = await api.post("/admin/upload/diagram", formData, {
+                headers: { "Content-Type": "multipart/form-data" }
+            });
+            if (res.data && res.data.url) {
+                if (variant === "light") {
+                    setManImageUrl?.(res.data.url);
+                    toast.success("Primary diagram uploaded successfully!");
+                } else {
+                    setManImageDarkUrl?.(res.data.url);
+                    toast.success("Dark theme diagram uploaded successfully!");
+                }
+            }
+        } catch (err: any) {
+            const msg = err.response?.data?.error || "Failed to upload diagram";
+            toast.error(msg);
+        } finally {
+            if (variant === "light") setUploadingLight(false);
+            else setUploadingDark(false);
+        }
+    };
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -155,6 +210,156 @@ export function CreateQuestionModal({
                                 </div>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Diagram Attachment Section */}
+                    <div className="space-y-2.5 p-3 rounded-xl bg-muted/20 border border-border">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                <ImageIcon className="h-3.5 w-3.5 text-primary" />
+                                Attach Diagram / Figure (Optional):
+                            </label>
+                            {manImageUrl && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setManImageUrl?.("");
+                                        setManImageDarkUrl?.("");
+                                        setManImageDarkInvert?.(false);
+                                    }}
+                                    className="text-[10px] text-destructive hover:underline flex items-center gap-1 cursor-pointer font-medium"
+                                >
+                                    <Trash2 className="h-3 w-3" /> Remove Diagram
+                                </button>
+                            )}
+                        </div>
+
+                        {!manImageUrl ? (
+                            <div>
+                                <input
+                                    type="file"
+                                    ref={lightInputRef}
+                                    onChange={(e) => {
+                                        const f = e.target.files?.[0];
+                                        if (f) handleFileUpload(f, "light");
+                                    }}
+                                    accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+                                    className="hidden"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => lightInputRef.current?.click()}
+                                    disabled={uploadingLight}
+                                    className="w-full border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/40 rounded-xl p-3.5 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                                >
+                                    {uploadingLight ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                            <span>Uploading diagram...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <UploadCloud className="h-4 w-4 text-primary" />
+                                            <span>Click to upload diagram (PNG, JPG, SVG, WebP • Max 300 KB)</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-3 pt-1">
+                                <div className="flex items-start gap-3">
+                                    {/* Light Preview */}
+                                    <div className="border border-border/80 rounded-lg p-1.5 bg-background max-w-[200px] shrink-0">
+                                        <div className="text-[9px] font-semibold text-muted-foreground mb-1 flex items-center gap-1">
+                                            <Sun className="h-2.5 w-2.5 text-amber-500" /> Light Mode
+                                        </div>
+                                        <img
+                                            src={manImageUrl}
+                                            alt="Uploaded diagram"
+                                            className="max-h-24 max-w-full object-contain rounded"
+                                        />
+                                    </div>
+
+                                    {/* Dark Preview or Dark Upload */}
+                                    <div className="border border-border/80 rounded-lg p-1.5 bg-zinc-950 text-white max-w-[200px] shrink-0">
+                                        <div className="text-[9px] font-semibold text-zinc-400 mb-1 flex items-center gap-1">
+                                            <Moon className="h-2.5 w-2.5 text-indigo-400" /> Dark Mode
+                                        </div>
+                                        {manImageDarkUrl ? (
+                                            <img
+                                                src={manImageDarkUrl}
+                                                alt="Dark diagram variant"
+                                                className="max-h-24 max-w-full object-contain rounded"
+                                            />
+                                        ) : (
+                                            <img
+                                                src={manImageUrl}
+                                                alt="Diagram in dark mode"
+                                                className={`max-h-24 max-w-full object-contain rounded ${
+                                                    manImageDarkInvert ? "invert hue-rotate-180 brightness-95" : ""
+                                                }`}
+                                            />
+                                        )}
+                                    </div>
+
+                                    <div className="text-xs space-y-2 flex-1 pt-1">
+                                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                                            <input
+                                                type="checkbox"
+                                                checked={manImageDarkInvert}
+                                                onChange={(e) => setManImageDarkInvert?.(e.target.checked)}
+                                                disabled={Boolean(manImageDarkUrl)}
+                                                className="h-3.5 w-3.5 rounded text-primary focus:ring-primary cursor-pointer"
+                                            />
+                                            <span className="font-medium text-foreground text-[11px]">
+                                                Auto-invert in Dark Mode
+                                            </span>
+                                        </label>
+                                        <p className="text-[10px] text-muted-foreground leading-snug">
+                                            Recommended for black-and-white formulas, geometry, circuits, and line plots so they seamlessly blend with dark background.
+                                        </p>
+
+                                        {!manImageDarkUrl && !showDarkUploader && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowDarkUploader(true)}
+                                                className="text-[10px] text-primary hover:underline block font-semibold cursor-pointer"
+                                            >
+                                                + Upload separate Dark Theme image
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {showDarkUploader && !manImageDarkUrl && (
+                                    <div className="pt-1 border-t border-border/50">
+                                        <input
+                                            type="file"
+                                            ref={darkInputRef}
+                                            onChange={(e) => {
+                                                const f = e.target.files?.[0];
+                                                if (f) handleFileUpload(f, "dark");
+                                            }}
+                                            accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+                                            className="hidden"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => darkInputRef.current?.click()}
+                                            disabled={uploadingDark}
+                                            className="text-xs px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer font-medium"
+                                        >
+                                            {uploadingDark ? (
+                                                <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                                            ) : (
+                                                <Moon className="h-3 w-3 text-indigo-400" />
+                                            )}
+                                            Upload Dark Theme Variant (Optional)
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-1.5">

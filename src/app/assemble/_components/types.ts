@@ -20,4 +20,7 @@ export interface Question {
     options: Option[];
     context_passage?: ContextPassage;
     sources?: string[];
+    image_url?: string;
+    image_dark_url?: string;
+    image_dark_invert?: boolean;
 }

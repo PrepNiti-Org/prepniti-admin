@@ -52,6 +52,9 @@ export default function UploadPage() {
         { text: "", isCorrect: false },
         { text: "", isCorrect: false }
     ]);
+    const [manImageUrl, setManImageUrl] = useState("");
+    const [manImageDarkUrl, setManImageDarkUrl] = useState("");
+    const [manImageDarkInvert, setManImageDarkInvert] = useState(false);
     const [editingInSandbox, setEditingInSandbox] = useState(false);
 
     const [file, setFile] = useState<File | null>(null);
@@ -330,6 +333,9 @@ export default function UploadPage() {
         setManTopic(q.topic || "");
         setManDiff(q.difficulty || "Medium");
         setManExpl(q.explanation || "");
+        setManImageUrl(q.image_url || "");
+        setManImageDarkUrl(q.image_dark_url || "");
+        setManImageDarkInvert(Boolean(q.image_dark_invert));
         setManOpts(
             q.options && q.options.length > 0
                 ? q.options.map((opt: any) => ({ text: opt.option_text, isCorrect: opt.is_correct }))
@@ -352,6 +358,9 @@ export default function UploadPage() {
             topic: manTopic.trim(),
             difficulty: manDiff,
             explanation: manExpl.trim(),
+            image_url: manImageUrl.trim() ? manImageUrl.trim() : null,
+            image_dark_url: manImageDarkUrl.trim() ? manImageDarkUrl.trim() : null,
+            image_dark_invert: manImageDarkInvert,
             options: manOpts.map(o => ({
                 option_text: o.text.trim(),
                 is_correct: o.isCorrect
@@ -648,6 +657,12 @@ export default function UploadPage() {
                 setManExpl={setManExpl}
                 manOpts={manOpts}
                 setManOpts={setManOpts}
+                manImageUrl={manImageUrl}
+                setManImageUrl={setManImageUrl}
+                manImageDarkUrl={manImageDarkUrl}
+                setManImageDarkUrl={setManImageDarkUrl}
+                manImageDarkInvert={manImageDarkInvert}
+                setManImageDarkInvert={setManImageDarkInvert}
                 onSubmit={handleSandboxEditSubmit}
                 addingQuestion={editingInSandbox}
                 title="Edit Sandbox Question"

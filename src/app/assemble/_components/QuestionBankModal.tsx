@@ -10,6 +10,7 @@ import {
     BookOpen,
     CheckCircle2,
     Plus,
+    Image as ImageIcon,
 } from "lucide-react";
 import { Question } from "./types";
 import { toast } from "sonner";
@@ -195,6 +196,11 @@ export function QuestionBankModal({
                                             {q.difficulty && (
                                                 <span className="text-[10px] font-semibold text-muted-foreground">
                                                     • {q.difficulty}
+                                                </span>
+                                            )}
+                                            {q.image_url && (
+                                                <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                                    <ImageIcon className="h-2.5 w-2.5" /> Diagram
                                                 </span>
                                             )}
                                             {isAlreadyInPaper && (

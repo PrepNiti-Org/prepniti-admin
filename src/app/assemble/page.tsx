@@ -23,6 +23,10 @@ import {
     HelpCircle,
     Clock,
     Layers,
+    Image as ImageIcon,
+    UploadCloud,
+    Sun,
+    Moon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -45,6 +49,9 @@ function sanitizeQuestionForVisualEditing(q: Question): Question {
         question_text: latexToVisualText(q.question_text || ""),
         passage_text: latexToVisualText(q.passage_text || q.context_passage?.passage_text || ""),
         explanation: latexToVisualText(q.explanation || ""),
+        image_url: q.image_url || "",
+        image_dark_url: q.image_dark_url || "",
+        image_dark_invert: Boolean(q.image_dark_invert),
         options: (q.options || []).map((opt) => ({
             ...opt,
             option_text: latexToVisualText(opt.option_text || ""),
@@ -61,6 +68,9 @@ function createEmptyQuestion(index: number): Question {
         difficulty: "Medium",
         explanation: "",
         passage_text: "",
+        image_url: "",
+        image_dark_url: "",
+        image_dark_invert: false,
         options: [
             { id: "opt_1", option_text: "", is_correct: true },
             { id: "opt_2", option_text: "", is_correct: false },
@@ -106,6 +116,13 @@ function AssemblePageContent() {
     const [isConfirmPublishOpen, setIsConfirmPublishOpen] = useState(false);
     const [publishing, setPublishing] = useState(false);
     const [savedNotice, setSavedNotice] = useState(false);
+
+    // Diagram Upload States
+    const [uploadingDiagram, setUploadingDiagram] = useState(false);
+    const [uploadingDarkDiagram, setUploadingDarkDiagram] = useState(false);
+    const [showDarkUploader, setShowDarkUploader] = useState(false);
+    const lightInputRef = React.useRef<HTMLInputElement>(null);
+    const darkInputRef = React.useRef<HTMLInputElement>(null);
 
     // Load drafts from localStorage on mount
     useEffect(() => {
@@ -422,6 +439,40 @@ function AssemblePageContent() {
         );
     };
 
+    const handleUploadDiagramForQuestion = async (file: File, variant: "light" | "dark", qId: string) => {
+        if (file.size > 300 * 1024) {
+            toast.error(`Diagram size (${Math.round(file.size / 1024)} KB) exceeds 300 KB limit. Please compress or optimize the image.`);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("variant", variant);
+
+        if (variant === "light") setUploadingDiagram(true);
+        else setUploadingDarkDiagram(true);
+
+        try {
+            const res = await api.post("/admin/upload/diagram", formData, {
+                headers: { "Content-Type": "multipart/form-data" }
+            });
+            if (res.data?.url) {
+                if (variant === "light") {
+                    handleUpdateQuestionField(qId, "image_url", res.data.url);
+                    toast.success("Primary diagram uploaded successfully!");
+                } else {
+                    handleUpdateQuestionField(qId, "image_dark_url", res.data.url);
+                    toast.success("Dark theme diagram uploaded successfully!");
+                }
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Failed to upload diagram");
+        } finally {
+            if (variant === "light") setUploadingDiagram(false);
+            else setUploadingDarkDiagram(false);
+        }
+    };
+
     const handleAddQuestionsFromBank = (picked: Question[]) => {
         const cleaned = picked.map(sanitizeQuestionForVisualEditing);
         setQuestions((prev) => [...prev, ...cleaned]);
@@ -506,6 +557,9 @@ function AssemblePageContent() {
                     difficulty: q.difficulty || "Medium",
                     explanation: q.explanation?.trim() || "",
                     passage_text: q.passage_text?.trim() || q.context_passage?.passage_text?.trim() || "",
+                    image_url: q.image_url?.trim() || undefined,
+                    image_dark_url: q.image_dark_url?.trim() || undefined,
+                    image_dark_invert: Boolean(q.image_dark_invert),
                     options: q.options
                         .filter((o) => o.option_text.trim().length > 0)
                         .map((o) => ({
@@ -843,6 +897,156 @@ function AssemblePageContent() {
                             onChange={(val) => handleUpdateQuestionField(activeQuestion.id, "question_text", val)}
                             rows={3}
                         />
+
+                        {/* Diagram Attachment Section */}
+                        <div className="space-y-2.5 p-3.5 rounded-xl bg-muted/20 border border-border">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                    <ImageIcon className="h-3.5 w-3.5 text-primary" />
+                                    Diagram / Figure Attachment (Optional):
+                                </label>
+                                {activeQuestion.image_url && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            handleUpdateQuestionField(activeQuestion.id, "image_url", "");
+                                            handleUpdateQuestionField(activeQuestion.id, "image_dark_url", "");
+                                            handleUpdateQuestionField(activeQuestion.id, "image_dark_invert", false);
+                                        }}
+                                        className="text-[10px] text-destructive hover:underline flex items-center gap-1 cursor-pointer font-medium"
+                                    >
+                                        <Trash2 className="h-3 w-3" /> Remove Diagram
+                                    </button>
+                                )}
+                            </div>
+
+                            {!activeQuestion.image_url ? (
+                                <div>
+                                    <input
+                                        type="file"
+                                        ref={lightInputRef}
+                                        onChange={(e) => {
+                                            const f = e.target.files?.[0];
+                                            if (f) handleUploadDiagramForQuestion(f, "light", activeQuestion.id);
+                                        }}
+                                        accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+                                        className="hidden"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => lightInputRef.current?.click()}
+                                        disabled={uploadingDiagram}
+                                        className="w-full border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/40 rounded-xl p-3 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+                                    >
+                                        {uploadingDiagram ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                                <span>Uploading diagram...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <UploadCloud className="h-4 w-4 text-primary" />
+                                                <span>Click to upload diagram (PNG, JPG, SVG, WebP • Max 300 KB)</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-3 pt-1">
+                                    <div className="flex flex-wrap items-start gap-3">
+                                        {/* Light Preview */}
+                                        <div className="border border-border/80 rounded-lg p-1.5 bg-background max-w-[200px] shrink-0">
+                                            <div className="text-[9px] font-semibold text-muted-foreground mb-1 flex items-center gap-1">
+                                                <Sun className="h-2.5 w-2.5 text-amber-500" /> Light Mode
+                                            </div>
+                                            <img
+                                                src={activeQuestion.image_url}
+                                                alt="Uploaded diagram"
+                                                className="max-h-24 max-w-full object-contain rounded"
+                                            />
+                                        </div>
+
+                                        {/* Dark Preview */}
+                                        <div className="border border-border/80 rounded-lg p-1.5 bg-zinc-950 text-white max-w-[200px] shrink-0">
+                                            <div className="text-[9px] font-semibold text-zinc-400 mb-1 flex items-center gap-1">
+                                                <Moon className="h-2.5 w-2.5 text-indigo-400" /> Dark Mode
+                                            </div>
+                                            {activeQuestion.image_dark_url ? (
+                                                <img
+                                                    src={activeQuestion.image_dark_url}
+                                                    alt="Dark diagram variant"
+                                                    className="max-h-24 max-w-full object-contain rounded"
+                                                />
+                                            ) : (
+                                                <img
+                                                    src={activeQuestion.image_url}
+                                                    alt="Diagram in dark mode"
+                                                    className={`max-h-24 max-w-full object-contain rounded ${
+                                                        activeQuestion.image_dark_invert ? "invert hue-rotate-180 brightness-95" : ""
+                                                    }`}
+                                                />
+                                            )}
+                                        </div>
+
+                                        <div className="text-xs space-y-2 flex-1 min-w-[200px] pt-1">
+                                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={Boolean(activeQuestion.image_dark_invert)}
+                                                    onChange={(e) => handleUpdateQuestionField(activeQuestion.id, "image_dark_invert", e.target.checked)}
+                                                    disabled={Boolean(activeQuestion.image_dark_url)}
+                                                    className="h-3.5 w-3.5 rounded text-primary focus:ring-primary cursor-pointer"
+                                                />
+                                                <span className="font-medium text-foreground text-[11px]">
+                                                    Auto-invert in Dark Mode
+                                                </span>
+                                            </label>
+                                            <p className="text-[10px] text-muted-foreground leading-snug">
+                                                Ideal for formulas, circuits, and geometry line drawings.
+                                            </p>
+
+                                            {!activeQuestion.image_dark_url && !showDarkUploader && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowDarkUploader(true)}
+                                                    className="text-[10px] text-primary hover:underline block font-semibold cursor-pointer"
+                                                >
+                                                    + Upload separate Dark Theme image
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {showDarkUploader && !activeQuestion.image_dark_url && (
+                                        <div className="pt-1 border-t border-border/50">
+                                            <input
+                                                type="file"
+                                                ref={darkInputRef}
+                                                onChange={(e) => {
+                                                    const f = e.target.files?.[0];
+                                                    if (f) handleUploadDiagramForQuestion(f, "dark", activeQuestion.id);
+                                                }}
+                                                accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+                                                className="hidden"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => darkInputRef.current?.click()}
+                                                disabled={uploadingDarkDiagram}
+                                                className="text-xs px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer font-medium"
+                                            >
+                                                {uploadingDarkDiagram ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                                                ) : (
+                                                    <Moon className="h-3 w-3 text-indigo-400" />
+                                                )}
+                                                Upload Dark Theme Variant (Optional)
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         {/* Answer Choices */}
                         <div className="space-y-2.5 pt-1">
